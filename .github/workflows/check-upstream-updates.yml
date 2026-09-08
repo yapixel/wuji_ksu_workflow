@@ -121,7 +121,7 @@ jobs:
           echo "- **Trigger Reason**: ${{ steps.check_upstream.outputs.changes_desc }}" >> $GITHUB_STEP_SUMMARY
           echo "- **KernelSU Commit**: \`${{ steps.check_upstream.outputs.new_ksu_sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- **SuSFS Commit**: \`${{ steps.check_upstream.outputs.new_susfs_sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- **Triggered Workflows**: \`build-popsicle-ksu.yml\` & \`build-sultan-ksu.yml\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered Workflows**: \`build-popsicle-ksu.yml\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Report No Update
         if: steps.check_upstream.outputs.trigger_build != 'true'

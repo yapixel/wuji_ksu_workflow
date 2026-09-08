@@ -1,8 +1,22 @@
+# Build outputs and workspaces
+out/
+kernel_workspace/
+AnyKernel3/
+*.zip
+*.tar.gz
+deinlined.patch
+
+# Temporary and log files
+*.tmp
+*.log
+*~
+.DS_Store
+
+# Editor / IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Pi Web local workspace data
 .pi-web/
-
-# Local AI reports / handovers
-*.md
-
-# Keep persistent agent instructions tracked
-!AGENTS.md
