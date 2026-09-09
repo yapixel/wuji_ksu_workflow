@@ -2,15 +2,6 @@ name: Build Popsicle GKI + KSU
 on:
   workflow_dispatch:
     inputs:
-      sub_level:
-        description: 'Kernel Sub-level'
-        required: true
-        type: choice
-        options:
-          - '23'
-          - '69'
-          - 'all'
-        default: '23'
       hook_mode:
         description: 'Hook Mode to Build'
         required: true
@@ -72,18 +63,10 @@ jobs:
     name: Prepare Environment
     runs-on: ubuntu-latest
     outputs:
-      sub_level_matrix: ${{ steps.set-matrix.outputs.sub_level_matrix }}
       susfs_matrix: ${{ steps.set-matrix.outputs.susfs_matrix }}
     steps:
       - id: set-matrix
         run: |
-          SUB_INPUT="${{ github.event.inputs.sub_level || '23' }}"
-          if [ "$SUB_INPUT" = "all" ]; then
-            echo 'sub_level_matrix=["23", "69"]' >> "$GITHUB_OUTPUT"
-          else
-            echo "sub_level_matrix=[\"$SUB_INPUT\"]" >> "$GITHUB_OUTPUT"
-          fi
-
           SUSFS_INPUT="${{ github.event.inputs.enable_susfs }}"
           if [ -z "$SUSFS_INPUT" ] || [ "$SUSFS_INPUT" = "all" ]; then
             echo 'susfs_matrix=["true", "false"]' >> "$GITHUB_OUTPUT"
@@ -92,14 +75,13 @@ jobs:
           fi
 
   build_manual:
-    name: Manual Hook 6.12.${{ matrix.sub_level }} (SUSFS=${{ matrix.enable_susfs }})
+    name: Manual Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
     if: github.event.inputs.hook_mode == 'all' || github.event.inputs.hook_mode == 'manual' || github.event_name != 'workflow_dispatch'
     needs: matrix_prep
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        sub_level: ${{ fromJson(needs.matrix_prep.outputs.sub_level_matrix) }}
         enable_susfs: ${{ fromJson(needs.matrix_prep.outputs.susfs_matrix) }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -123,12 +105,12 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-gki-6.12.${{ matrix.sub_level }}-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
+          key: ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
           restore-keys: |
-            ccache-gki-6.12.${{ matrix.sub_level }}-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
-            ccache-gki-6.12.${{ matrix.sub_level }}-manual-${{ matrix.enable_susfs }}-
-            ccache-gki-6.12.${{ matrix.sub_level }}-manual-
-            ccache-gki-6.12.${{ matrix.sub_level }}-
+            ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
+            ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-
+            ccache-gki-6.12.38-manual-
+            ccache-gki-6.12.38-
             ccache-gki-6.12-
 
       - name: Setup Ccache Configurations & Wrappers
@@ -198,12 +180,8 @@ jobs:
             echo "✅ Clang Toolchain restored from Action Cache!"
           fi
 
-          echo "Downloading GKI 6.12.${{ matrix.sub_level }} kernel source..."
-          if [ "${{ matrix.sub_level }}" = "69" ]; then
-            COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/kernel-archive-android16-6.12-2026-03_r60/common-android16-6.12-2026-03_r60.tar.gz"
-          else
-            COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-06_r58/common-android16-6.12-2025-06_r58.tar.gz"
-          fi
+          echo "Downloading GKI 6.12.38 kernel source..."
+          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12.38_r00/common-android16-6.12.38_r00.tar.gz"
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
@@ -255,11 +233,11 @@ jobs:
 
           echo "ksu_ver=$K_VER" >> "$GITHUB_OUTPUT"
           echo "toolchain_display=$TOOLCHAIN_DISPLAY" >> "$GITHUB_OUTPUT"
-          echo "kernel_ver=6.12.${{ matrix.sub_level }}" >> "$GITHUB_OUTPUT"
+          echo "kernel_ver=6.12.38" >> "$GITHUB_OUTPUT"
           echo "susfs_ver=$SUSFS_VER" >> "$GITHUB_OUTPUT"
 
           echo "======================================"
-          echo "🐧 Kernel Base: Linux 6.12.${{ matrix.sub_level }} (GKI / Popsicle)"
+          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Popsicle)"
           echo "🔧 KSU Branch: $KSU_BRANCH (+$K_VER)"
           echo "🪝 Hook Mode: manual"
           echo "🛡️ SUSFS: ${{ matrix.enable_susfs }} ($SUSFS_VER)"
@@ -278,16 +256,12 @@ jobs:
         if: matrix.enable_susfs == 'true'
         working-directory: kernel_workspace/common
         run: |
-          echo "Applying SuSFS patches (GKI 6.12.${{ matrix.sub_level }})..."
+          echo "Applying SuSFS patches (GKI 6.12.38)..."
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          if [ "${{ matrix.sub_level }}" = "69" ]; then
-            SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.69.patch"
-          else
-            SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.23.patch"
-          fi
+          SUSFS_PATCH="${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-android16-6.12.patch"
           bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
           patch -p1 < deinlined.patch
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/55_try_umount_for_susfs.patch"
@@ -345,7 +319,7 @@ jobs:
       - name: Ccache Performance Stats
         if: github.event.inputs.use_ccache != 'false'
         run: |
-          echo "=== Ccache Performance Stats (manual 6.12.${{ matrix.sub_level }}, SUSFS=${{ matrix.enable_susfs }}) ==="
+          echo "=== Ccache Performance Stats (manual 6.12.38, SUSFS=${{ matrix.enable_susfs }}) ==="
           ccache -s
 
       - name: Package
@@ -373,7 +347,7 @@ jobs:
             SUSFS_TAG=""
           fi
 
-          BASE_NAME="KSU_Popsicle_6.12.${{ matrix.sub_level }}+${K_VER}${BRANCH_TAG}-manual${SUSFS_TAG}-${DATE}"
+          BASE_NAME="KSU_Popsicle_6.12.38+${K_VER}${BRANCH_TAG}-manual${SUSFS_TAG}-${DATE}"
           ZIP_NAME="${BASE_NAME}.zip"
 
           echo "Packaging AnyKernel3: $ZIP_NAME"
@@ -382,7 +356,7 @@ jobs:
           mkdir -p ./output_artifacts
           mv "$ZIP_NAME" ./output_artifacts/
 
-          echo "KERNEL_VER='6.12.${{ matrix.sub_level }}'" > ./output_artifacts/build_metadata.env
+          echo "KERNEL_VER='6.12.38'" > ./output_artifacts/build_metadata.env
           echo "KSU_VER='${K_VER}'" >> ./output_artifacts/build_metadata.env
           echo "TOOLCHAIN_DISPLAY='${TOOLCHAIN_DISPLAY}'" >> ./output_artifacts/build_metadata.env
           if [ "${{ matrix.enable_susfs }}" = "true" ] && [ -n "$SUSFS_VER" ] && [ "$SUSFS_VER" != "unknown" ]; then
@@ -420,7 +394,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: kernel-6.12.${{ matrix.sub_level }}-manual-${{ matrix.enable_susfs }}
+          name: kernel-6.12.38-manual-${{ matrix.enable_susfs }}
           path: ./output_artifacts/*
 
       - name: Save Ccache Data
@@ -438,14 +412,13 @@ jobs:
           key: gki-toolchains-r536225-rust1.82.0
 
   build_lsm:
-    name: LSM Hook 6.12.${{ matrix.sub_level }} (SUSFS=${{ matrix.enable_susfs }})
+    name: LSM Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
     if: github.event.inputs.hook_mode == 'all' || github.event.inputs.hook_mode == 'lsm' || github.event_name != 'workflow_dispatch'
     needs: matrix_prep
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        sub_level: ${{ fromJson(needs.matrix_prep.outputs.sub_level_matrix) }}
         enable_susfs: ${{ fromJson(needs.matrix_prep.outputs.susfs_matrix) }}
     steps:
       - uses: actions/checkout@v7.0.1
@@ -469,12 +442,12 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-gki-6.12.${{ matrix.sub_level }}-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
+          key: ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
           restore-keys: |
-            ccache-gki-6.12.${{ matrix.sub_level }}-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
-            ccache-gki-6.12.${{ matrix.sub_level }}-lsm-${{ matrix.enable_susfs }}-
-            ccache-gki-6.12.${{ matrix.sub_level }}-lsm-
-            ccache-gki-6.12.${{ matrix.sub_level }}-
+            ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
+            ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-
+            ccache-gki-6.12.38-lsm-
+            ccache-gki-6.12.38-
             ccache-gki-6.12-
 
       - name: Setup Ccache Configurations & Wrappers
@@ -544,12 +517,8 @@ jobs:
             echo "✅ Clang Toolchain restored from Action Cache!"
           fi
 
-          echo "Downloading GKI 6.12.${{ matrix.sub_level }} kernel source..."
-          if [ "${{ matrix.sub_level }}" = "69" ]; then
-            COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/kernel-archive-android16-6.12-2026-03_r60/common-android16-6.12-2026-03_r60.tar.gz"
-          else
-            COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-06_r58/common-android16-6.12-2025-06_r58.tar.gz"
-          fi
+          echo "Downloading GKI 6.12.38 kernel source..."
+          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12.38_r00/common-android16-6.12.38_r00.tar.gz"
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
@@ -601,11 +570,11 @@ jobs:
 
           echo "ksu_ver=$K_VER" >> "$GITHUB_OUTPUT"
           echo "toolchain_display=$TOOLCHAIN_DISPLAY" >> "$GITHUB_OUTPUT"
-          echo "kernel_ver=6.12.${{ matrix.sub_level }}" >> "$GITHUB_OUTPUT"
+          echo "kernel_ver=6.12.38" >> "$GITHUB_OUTPUT"
           echo "susfs_ver=$SUSFS_VER" >> "$GITHUB_OUTPUT"
 
           echo "======================================"
-          echo "🐧 Kernel Base: Linux 6.12.${{ matrix.sub_level }} (GKI / Popsicle)"
+          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Popsicle)"
           echo "🔧 KSU Branch: $KSU_BRANCH (+$K_VER)"
           echo "🪝 Hook Mode: lsm (Hookless/BL)"
           echo "🛡️ SUSFS: ${{ matrix.enable_susfs }} ($SUSFS_VER)"
@@ -622,16 +591,12 @@ jobs:
         if: matrix.enable_susfs == 'true'
         working-directory: kernel_workspace/common
         run: |
-          echo "Applying SuSFS patches (GKI 6.12.${{ matrix.sub_level }})..."
+          echo "Applying SuSFS patches (GKI 6.12.38)..."
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          if [ "${{ matrix.sub_level }}" = "69" ]; then
-            SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.69.patch"
-          else
-            SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.23.patch"
-          fi
+          SUSFS_PATCH="${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-android16-6.12.patch"
           bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
           patch -p1 < deinlined.patch
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/55_try_umount_for_susfs.patch"
@@ -689,7 +654,7 @@ jobs:
       - name: Ccache Performance Stats
         if: github.event.inputs.use_ccache != 'false'
         run: |
-          echo "=== Ccache Performance Stats (lsm 6.12.${{ matrix.sub_level }}, SUSFS=${{ matrix.enable_susfs }}) ==="
+          echo "=== Ccache Performance Stats (lsm 6.12.38, SUSFS=${{ matrix.enable_susfs }}) ==="
           ccache -s
 
       - name: Package
@@ -717,7 +682,7 @@ jobs:
             SUSFS_TAG=""
           fi
 
-          BASE_NAME="KSU_Popsicle_6.12.${{ matrix.sub_level }}+${K_VER}${BRANCH_TAG}-lsm${SUSFS_TAG}-${DATE}"
+          BASE_NAME="KSU_Popsicle_6.12.38+${K_VER}${BRANCH_TAG}-lsm${SUSFS_TAG}-${DATE}"
           ZIP_NAME="${BASE_NAME}.zip"
 
           echo "Packaging AnyKernel3: $ZIP_NAME"
@@ -726,7 +691,7 @@ jobs:
           mkdir -p ./output_artifacts
           mv "$ZIP_NAME" ./output_artifacts/
 
-          echo "KERNEL_VER='6.12.${{ matrix.sub_level }}'" > ./output_artifacts/build_metadata.env
+          echo "KERNEL_VER='6.12.38'" > ./output_artifacts/build_metadata.env
           echo "KSU_VER='${K_VER}'" >> ./output_artifacts/build_metadata.env
           echo "TOOLCHAIN_DISPLAY='${TOOLCHAIN_DISPLAY}'" >> ./output_artifacts/build_metadata.env
           if [ "${{ matrix.enable_susfs }}" = "true" ] && [ -n "$SUSFS_VER" ] && [ "$SUSFS_VER" != "unknown" ]; then
@@ -764,7 +729,7 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: kernel-6.12.${{ matrix.sub_level }}-lsm-${{ matrix.enable_susfs }}
+          name: kernel-6.12.38-lsm-${{ matrix.enable_susfs }}
           path: ./output_artifacts/*
 
       - name: Save Ccache Data
@@ -831,16 +796,16 @@ jobs:
             SUSFS_VER="v2.2.0"
           fi
           TOOLCHAIN_DISPLAY="${TOOLCHAIN_DISPLAY:-Clang (AOSP Toolchain)}"
-          KERNEL_VER="${KERNEL_VER:-6.12}"
+          KERNEL_VER="${KERNEL_VER:-6.12.38}"
           KSU_VER="${KSU_VER:-unknown}"
 
           PRERELEASE_FLAG=""
           if [ "$KSU_BRANCH" = "staging" ]; then
             PRERELEASE_FLAG="--prerelease"
-            RELEASE_TITLE="Xiaomi Popsicle 6.12 (Staging) — $TAG"
+            RELEASE_TITLE="Xiaomi Popsicle 6.12.38 (Staging) — $TAG"
             DEBUG_NOTE="> 🛠️ **Debug Symbols**: Includes \`vmlinux\` and \`System.map\` debug symbol archives for kernel debugging."
           else
-            RELEASE_TITLE="Xiaomi Popsicle 6.12 — $TAG"
+            RELEASE_TITLE="Xiaomi Popsicle 6.12.38 — $TAG"
             DEBUG_NOTE=""
           fi
           BUILD_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
