@@ -261,7 +261,7 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          SUSFS_PATCH="${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-android16-6.12.patch"
+          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
           bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
           patch -p1 < deinlined.patch
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/55_try_umount_for_susfs.patch"
@@ -596,7 +596,7 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          SUSFS_PATCH="${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-android16-6.12.patch"
+          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
           bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
           patch -p1 < deinlined.patch
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/55_try_umount_for_susfs.patch"
@@ -845,4 +845,3 @@ jobs:
               --title "$RELEASE_TITLE" \
               --notes-file release_body.md
           fi
-
