@@ -1,0 +1,156 @@
+name: Generate Clean TB324ZC 6.12.38 Deinlined SuSFS Patch
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate clean 51 deinlined patch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 1
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends aria2 patch
+
+      - name: Download GKI 6.12.38 source
+        run: |
+          set -euo pipefail
+
+          mkdir -p kernel_workspace
+          cd kernel_workspace
+
+          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12.38_r00/common-android16-6.12.38_r00.tar.gz"
+
+          aria2c -s16 -x16 -k1M \
+            --file-allocation=none \
+            "$COMMON_URL" \
+            -o common.tar.gz
+
+          mkdir -p common
+          tar -xzf common.tar.gz -C common
+          rm -f common.tar.gz
+
+      - name: Recreate common pre-SuSFS baseline
+        working-directory: kernel_workspace/common
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Both manual and LSM paths apply this before SuSFS.
+          patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/unicode_bypass_fix.patch" || true
+
+          # Snapshot the exact common source state before the 50 -> deinlined flow.
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "pre-susfs baseline"
+
+          echo "BASELINE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Generate current deinlined.patch from 50
+        working-directory: kernel_workspace/common
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          INPUT="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
+
+          test -s "$INPUT"
+
+          bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" \
+            "$INPUT" \
+            deinlined.patch
+
+          test -s deinlined.patch
+
+          echo "=== Generated deinlined.patch targets ==="
+          grep '^diff --git ' deinlined.patch
+
+      - name: Apply current deinlined.patch
+        working-directory: kernel_workspace/common
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APPLY_LOG="${{ runner.temp }}/deinlined-apply.log"
+
+          if ! patch -p1 < deinlined.patch >"$APPLY_LOG" 2>&1; then
+            cat "$APPLY_LOG"
+            echo "Current deinlined.patch failed to apply." >&2
+            exit 1
+          fi
+
+          cat "$APPLY_LOG"
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            echo "Reject files were generated while applying deinlined.patch:" >&2
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+      - name: Export clean 51 patch
+        working-directory: kernel_workspace/common
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT="${{ github.workspace }}/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
+
+          git diff --binary "$BASELINE" > "$OUT"
+
+          test -s "$OUT"
+          grep -q '^diff --git ' "$OUT"
+
+          echo "=== Clean 51 patch targets ==="
+          grep '^diff --git ' "$OUT"
+
+          echo "=== Clean 51 patch stats ==="
+          wc -l "$OUT"
+          sha256sum "$OUT"
+
+      - name: Verify clean 51 patch
+        working-directory: kernel_workspace/common
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          OUT="${{ github.workspace }}/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
+          VERIFY_LOG="${{ runner.temp }}/clean-51-verify.log"
+
+          git reset --hard "$BASELINE"
+          git clean -fd
+
+          if ! patch --dry-run -p1 < "$OUT" >"$VERIFY_LOG" 2>&1; then
+            cat "$VERIFY_LOG"
+            echo "Clean 51 patch dry-run failed." >&2
+            exit 1
+          fi
+
+          cat "$VERIFY_LOG"
+
+          if grep -Eiq 'Hunk #[0-9]+|offset|fuzz|FAILED|malformed|reject' "$VERIFY_LOG"; then
+            echo "Clean 51 patch is not clean." >&2
+            exit 1
+          fi
+
+          echo "Verified: 0 Hunk relocation messages, 0 offset, 0 fuzz, 0 rejects."
+
+      - name: Upload clean 51 patch
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: tb324zc-6.12.38-clean-51-deinlined-patch
+          path: 51_add_susfs_in_gki-android16-6.12.38-deinlined.patch
+          if-no-files-found: error
+          retention-days: 7
