@@ -261,9 +261,7 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
-          bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
-          patch -p1 < deinlined.patch
+          patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
           
 
           cd KernelSU
@@ -596,10 +594,7 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
-          bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
-          patch -p1 < deinlined.patch
-          
+          patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
 
           cd KernelSU
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/11_enable_susfs_for_ksu.patch"
