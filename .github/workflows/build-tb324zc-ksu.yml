@@ -252,19 +252,22 @@ jobs:
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/xxksu/manual-security-hooks-v2.0.patch"
           patch -p1 -l < "${{ github.workspace }}/.github/patches/xxksu/scope-min-manual-hooks-v2.3.patch"
 
-      - name: Apply SuSFS Patches
+      - name: Apply SuSFS GKI Patch (51 - de-inlined)
         if: matrix.enable_susfs == 'true'
         working-directory: kernel_workspace/common
         run: |
-          echo "Applying SuSFS patches (GKI 6.12.38)..."
+          echo "=== [51] Apply SuSFS de-inlined patch to GKI 6.12.38 common tree ==="
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
-          
 
-          cd KernelSU
+      - name: Apply KernelSU SuSFS Patch (11)
+        if: matrix.enable_susfs == 'true'
+        working-directory: kernel_workspace/common/KernelSU
+        run: |
+          echo "=== [11] Apply SuSFS integration patch to KernelSU ==="
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/11_enable_susfs_for_ksu.patch"
 
       - name: Inject Defconfig Flags
@@ -585,18 +588,22 @@ jobs:
         run: |
           patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/unicode_bypass_fix.patch" || true
 
-      - name: Apply SuSFS Patches
+      - name: Apply SuSFS GKI Patch (51 - de-inlined)
         if: matrix.enable_susfs == 'true'
         working-directory: kernel_workspace/common
         run: |
-          echo "Applying SuSFS patches (GKI 6.12.38)..."
+          echo "=== [51] Apply SuSFS de-inlined patch to GKI 6.12.38 common tree ==="
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
 
-          cd KernelSU
+      - name: Apply KernelSU SuSFS Patch (11)
+        if: matrix.enable_susfs == 'true'
+        working-directory: kernel_workspace/common/KernelSU
+        run: |
+          echo "=== [11] Apply SuSFS integration patch to KernelSU ==="
           patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/11_enable_susfs_for_ksu.patch"
 
       - name: Inject Defconfig Flags
