@@ -1,0 +1,418 @@
+name: Sync Clean SuSFS Patches (50 -> 51 + xx -> 11)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 0 * * *'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-clean-susfs-patches-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  SUSFS_REPO_URL: https://gitlab.com/simonpunk/susfs4ksu
+  SUSFS_REPO_BRANCH: gki-android16-6.12
+  KSU_REPO_URL: https://github.com/backslashxx/KernelSU
+  KSU_BRANCH: master
+  XX_PATCH_URL: https://github.com/midori01/KernelSU/commit/xx.patch
+  COMMON_URL: https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12.38_r00/common-android16-6.12.38_r00.tar.gz
+
+  PATCH_50: .github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch
+  PATCH_51: .github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch
+  PATCH_11: .github/patches/xxksu/11_enable_susfs_for_ksu.patch
+
+jobs:
+  sync:
+    name: Refresh and validate 50 / 51 / 11
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.ref_name }}
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends aria2 patch
+
+      - name: Fetch latest upstream SuSFS 50 patch
+        run: |
+          set -euo pipefail
+
+          git clone --depth=1 --single-branch --no-tags             --branch="${SUSFS_REPO_BRANCH}"             "${SUSFS_REPO_URL}"             upstream-susfs
+
+          mapfile -t CANDIDATES < <(
+            find upstream-susfs/kernel_patches               -maxdepth 1               -type f               -name '50_add_susfs_in_gki-android16-6.12*.patch'               -print | sort
+          )
+
+          if [ "${#CANDIDATES[@]}" -ne 1 ]; then
+            echo "Expected exactly one Android16/6.12 upstream 50 patch, found ${#CANDIDATES[@]}." >&2
+            printf '  %s\n' "${CANDIDATES[@]:-<none>}" >&2
+            exit 1
+          fi
+
+          cp "${CANDIDATES[0]}" "${RUNNER_TEMP}/upstream-50.patch"
+          test -s "${RUNNER_TEMP}/upstream-50.patch"
+
+          echo "=== Upstream 50 source ==="
+          echo "${CANDIDATES[0]}"
+          sha256sum "${RUNNER_TEMP}/upstream-50.patch"
+
+          echo "UPSTREAM_50_SHA=$(sha256sum "${RUNNER_TEMP}/upstream-50.patch" | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      - name: Fetch latest upstream xx.patch
+        run: |
+          set -euo pipefail
+
+          curl -fL "${XX_PATCH_URL}" -o "${RUNNER_TEMP}/upstream-xx.patch"
+          test -s "${RUNNER_TEMP}/upstream-xx.patch"
+
+          echo "=== Upstream xx.patch targets ==="
+          grep '^diff --git ' "${RUNNER_TEMP}/upstream-xx.patch" || true
+          sha256sum "${RUNNER_TEMP}/upstream-xx.patch"
+
+          echo "UPSTREAM_XX_SHA=$(sha256sum "${RUNNER_TEMP}/upstream-xx.patch" | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      # ===== 50 -> 51 =====
+
+      - name: Download exact GKI 6.12.38 source
+        run: |
+          set -euo pipefail
+
+          mkdir -p kernel_workspace
+          cd kernel_workspace
+
+          aria2c -s16 -x16 -k1M             --file-allocation=none             "${COMMON_URL}"             -o common.tar.gz
+
+          mkdir -p common
+          tar -xzf common.tar.gz -C common
+          rm -f common.tar.gz
+
+      - name: Create exact pre-SuSFS GKI baseline
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          patch -p1 -l < "${GITHUB_WORKSPACE}/.github/patches/gki/unicode_bypass_fix.patch" || true
+
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "pre-susfs baseline"
+
+          echo "GKI_BASELINE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: De-inline latest upstream 50
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          bash "${GITHUB_WORKSPACE}/.github/scripts/susfs_deinlined.sh"             "${RUNNER_TEMP}/upstream-50.patch"             "${RUNNER_TEMP}/deinlined-from-upstream-50.patch"
+
+          test -s "${RUNNER_TEMP}/deinlined-from-upstream-50.patch"
+
+          echo "=== De-inlined upstream 50 targets ==="
+          grep '^diff --git ' "${RUNNER_TEMP}/deinlined-from-upstream-50.patch"
+
+      - name: Apply de-inlined upstream 50
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          LOG="${RUNNER_TEMP}/51-source-apply.log"
+
+          if ! patch -p1             < "${RUNNER_TEMP}/deinlined-from-upstream-50.patch"             >"$LOG" 2>&1; then
+            cat "$LOG"
+            echo "De-inlined upstream 50 failed to apply." >&2
+            exit 1
+          fi
+
+          cat "$LOG"
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+      - name: Export first-pass clean 51
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          FIRST="${RUNNER_TEMP}/51-first-pass.patch"
+          git diff --binary "${GKI_BASELINE}" > "$FIRST"
+
+          test -s "$FIRST"
+          grep -q '^diff --git ' "$FIRST"
+          sha256sum "$FIRST"
+
+      - name: Reapply first-pass 51
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          FIRST="${RUNNER_TEMP}/51-first-pass.patch"
+          LOG="${RUNNER_TEMP}/51-first-pass-reapply.log"
+
+          git reset --hard "${GKI_BASELINE}"
+          git clean -fd
+
+          if ! patch -p1 < "$FIRST" >"$LOG" 2>&1; then
+            cat "$LOG"
+            exit 1
+          fi
+
+          cat "$LOG"
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+      - name: Export final canonical 51
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          OUT="${GITHUB_WORKSPACE}/${PATCH_51}"
+          mkdir -p "$(dirname "$OUT")"
+
+          git diff --binary "${GKI_BASELINE}" > "$OUT"
+
+          test -s "$OUT"
+          grep -q '^diff --git ' "$OUT"
+
+          echo "=== Final 51 targets ==="
+          grep '^diff --git ' "$OUT"
+          sha256sum "$OUT"
+
+      - name: Strictly validate final 51
+        working-directory: kernel_workspace/common
+        run: |
+          set -euo pipefail
+
+          OUT="${GITHUB_WORKSPACE}/${PATCH_51}"
+          DRY_LOG="${RUNNER_TEMP}/51-final-dry-run.log"
+          APPLY_LOG="${RUNNER_TEMP}/51-final-real-apply.log"
+          BAD='Hunk #[0-9]+|offset|fuzz|FAILED|malformed|reject'
+
+          git reset --hard "${GKI_BASELINE}"
+          git clean -fd
+
+          if ! patch --dry-run -p1 < "$OUT" >"$DRY_LOG" 2>&1; then
+            cat "$DRY_LOG"
+            exit 1
+          fi
+
+          cat "$DRY_LOG"
+
+          if grep -Eiq "$BAD" "$DRY_LOG"; then
+            echo "Final 51 dry-run is not clean." >&2
+            exit 1
+          fi
+
+          if ! patch -p1 < "$OUT" >"$APPLY_LOG" 2>&1; then
+            cat "$APPLY_LOG"
+            exit 1
+          fi
+
+          cat "$APPLY_LOG"
+
+          if grep -Eiq "$BAD" "$APPLY_LOG"; then
+            echo "Final 51 real apply is not clean." >&2
+            exit 1
+          fi
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+          echo "51 PASS: 0 Hunk relocation messages, 0 offset, 0 fuzz, 0 rejects."
+
+      - name: Refresh tracked upstream 50 snapshot
+        run: |
+          set -euo pipefail
+          cp "${RUNNER_TEMP}/upstream-50.patch" "${GITHUB_WORKSPACE}/${PATCH_50}"
+
+      # ===== xx.patch -> 11 =====
+
+      - name: Clone exact KernelSU baseline
+        run: |
+          set -euo pipefail
+
+          git clone --depth=1 --single-branch --no-tags             --branch="${KSU_BRANCH}"             "${KSU_REPO_URL}"             KernelSU
+
+      - name: Create exact pre-xx KernelSU baseline
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          cp -r uapi kernel/uapi 2>/dev/null || true
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -q -m "pre-xx baseline"
+          fi
+
+          echo "KSU_BASELINE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Apply latest upstream xx.patch
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          LOG="${RUNNER_TEMP}/11-source-apply.log"
+
+          if ! patch -p1 -l --fuzz=3             < "${RUNNER_TEMP}/upstream-xx.patch"             >"$LOG" 2>&1; then
+            cat "$LOG"
+            exit 1
+          fi
+
+          cat "$LOG"
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+      - name: Export first-pass clean 11
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          FIRST="${RUNNER_TEMP}/11-first-pass.patch"
+          git diff --binary "${KSU_BASELINE}" > "$FIRST"
+
+          test -s "$FIRST"
+          grep -q '^diff --git ' "$FIRST"
+          sha256sum "$FIRST"
+
+      - name: Reapply first-pass 11
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          FIRST="${RUNNER_TEMP}/11-first-pass.patch"
+          LOG="${RUNNER_TEMP}/11-first-pass-reapply.log"
+
+          git reset --hard "${KSU_BASELINE}"
+          git clean -fd
+
+          if ! patch -p1 < "$FIRST" >"$LOG" 2>&1; then
+            cat "$LOG"
+            exit 1
+          fi
+
+          cat "$LOG"
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+      - name: Export final canonical 11
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          OUT="${GITHUB_WORKSPACE}/${PATCH_11}"
+
+          git diff --binary "${KSU_BASELINE}" > "$OUT"
+
+          test -s "$OUT"
+          grep -q '^diff --git ' "$OUT"
+
+          echo "=== Final 11 targets ==="
+          grep '^diff --git ' "$OUT"
+          sha256sum "$OUT"
+
+      - name: Strictly validate final 11
+        working-directory: KernelSU
+        run: |
+          set -euo pipefail
+
+          OUT="${GITHUB_WORKSPACE}/${PATCH_11}"
+          DRY_LOG="${RUNNER_TEMP}/11-final-dry-run.log"
+          APPLY_LOG="${RUNNER_TEMP}/11-final-real-apply.log"
+          BAD='Hunk #[0-9]+|offset|fuzz|FAILED|malformed|reject'
+
+          git reset --hard "${KSU_BASELINE}"
+          git clean -fd
+
+          if ! patch --dry-run -p1 < "$OUT" >"$DRY_LOG" 2>&1; then
+            cat "$DRY_LOG"
+            exit 1
+          fi
+
+          cat "$DRY_LOG"
+
+          if grep -Eiq "$BAD" "$DRY_LOG"; then
+            echo "Final 11 dry-run is not clean." >&2
+            exit 1
+          fi
+
+          if ! patch -p1 < "$OUT" >"$APPLY_LOG" 2>&1; then
+            cat "$APPLY_LOG"
+            exit 1
+          fi
+
+          cat "$APPLY_LOG"
+
+          if grep -Eiq "$BAD" "$APPLY_LOG"; then
+            echo "Final 11 real apply is not clean." >&2
+            exit 1
+          fi
+
+          if find . -name '*.rej' -print -quit | grep -q .; then
+            find . -name '*.rej' -print
+            exit 1
+          fi
+
+          echo "11 PASS: 0 Hunk relocation messages, 0 offset, 0 fuzz, 0 rejects."
+
+      # ===== Commit only after BOTH 51 and 11 pass =====
+
+      - name: Show synchronized patch status
+        run: |
+          set -euo pipefail
+
+          echo "=== Upstream hashes ==="
+          echo "50: ${UPSTREAM_50_SHA}"
+          echo "xx: ${UPSTREAM_XX_SHA}"
+
+          echo "=== Final tracked patch hashes ==="
+          sha256sum "${PATCH_50}" "${PATCH_51}" "${PATCH_11}"
+
+          echo "=== Repository changes ==="
+          git status --short -- "${PATCH_50}" "${PATCH_51}" "${PATCH_11}"
+          git diff --stat -- "${PATCH_50}" "${PATCH_51}" "${PATCH_11}"
+
+      - name: Commit validated 50 / 51 / 11 updates
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -- "${PATCH_50}" "${PATCH_51}" "${PATCH_11}"
+
+          if git diff --cached --quiet; then
+            echo "No upstream patch changes. Nothing to commit."
+            exit 0
+          fi
+
+          git commit             -m "chore: refresh validated SuSFS patches [skip ci]"             -m "upstream 50 sha256: ${UPSTREAM_50_SHA}"             -m "upstream xx sha256: ${UPSTREAM_XX_SHA}"
+
+          git push origin "HEAD:${GITHUB_REF_NAME}"
