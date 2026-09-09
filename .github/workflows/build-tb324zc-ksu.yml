@@ -1,4 +1,4 @@
-name: Build Popsicle GKI + KSU
+name: Build Lenovo ZUK TB324ZC GKI + KSU
 on:
   workflow_dispatch:
     inputs:
@@ -237,7 +237,7 @@ jobs:
           echo "susfs_ver=$SUSFS_VER" >> "$GITHUB_OUTPUT"
 
           echo "======================================"
-          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Popsicle)"
+          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Lenovo ZUK TB324ZC)"
           echo "🔧 KSU Branch: $KSU_BRANCH (+$K_VER)"
           echo "🪝 Hook Mode: manual"
           echo "🛡️ SUSFS: ${{ matrix.enable_susfs }} ($SUSFS_VER)"
@@ -347,7 +347,7 @@ jobs:
             SUSFS_TAG=""
           fi
 
-          BASE_NAME="KSU_Popsicle_6.12.38+${K_VER}${BRANCH_TAG}-manual${SUSFS_TAG}-${DATE}"
+          BASE_NAME="KSU_TB324ZC_6.12.38+${K_VER}${BRANCH_TAG}-manual${SUSFS_TAG}-${DATE}"
           ZIP_NAME="${BASE_NAME}.zip"
 
           echo "Packaging AnyKernel3: $ZIP_NAME"
@@ -574,7 +574,7 @@ jobs:
           echo "susfs_ver=$SUSFS_VER" >> "$GITHUB_OUTPUT"
 
           echo "======================================"
-          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Popsicle)"
+          echo "🐧 Kernel Base: Linux 6.12.38 (GKI / Lenovo ZUK TB324ZC)"
           echo "🔧 KSU Branch: $KSU_BRANCH (+$K_VER)"
           echo "🪝 Hook Mode: lsm (Hookless/BL)"
           echo "🛡️ SUSFS: ${{ matrix.enable_susfs }} ($SUSFS_VER)"
@@ -682,7 +682,7 @@ jobs:
             SUSFS_TAG=""
           fi
 
-          BASE_NAME="KSU_Popsicle_6.12.38+${K_VER}${BRANCH_TAG}-lsm${SUSFS_TAG}-${DATE}"
+          BASE_NAME="KSU_TB324ZC_6.12.38+${K_VER}${BRANCH_TAG}-lsm${SUSFS_TAG}-${DATE}"
           ZIP_NAME="${BASE_NAME}.zip"
 
           echo "Packaging AnyKernel3: $ZIP_NAME"
@@ -802,10 +802,10 @@ jobs:
           PRERELEASE_FLAG=""
           if [ "$KSU_BRANCH" = "staging" ]; then
             PRERELEASE_FLAG="--prerelease"
-            RELEASE_TITLE="Xiaomi Popsicle 6.12.38 (Staging) — $TAG"
+            RELEASE_TITLE="Lenovo ZUK TB324ZC 6.12.38 (Staging) — $TAG"
             DEBUG_NOTE="> 🛠️ **Debug Symbols**: Includes \`vmlinux\` and \`System.map\` debug symbol archives for kernel debugging."
           else
-            RELEASE_TITLE="Xiaomi Popsicle 6.12.38 — $TAG"
+            RELEASE_TITLE="Lenovo ZUK TB324ZC 6.12.38 — $TAG"
             DEBUG_NOTE=""
           fi
           BUILD_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
@@ -816,9 +816,9 @@ jobs:
             echo "### 🚀 Build Information"
             echo "| Component | Details |"
             echo "| :--- | :--- |"
-            echo "| **Target Device** | Xiaomi Popsicle (\`SM8850\`) |"
+            echo "| **Target Device** | Lenovo ZUK TB324ZC |"
             echo "| **Architecture** | Android GKI 6.12 |"
-            echo "| **Kernel Base** | Linux $KERNEL_VER (Popsicle) |"
+            echo "| **Kernel Base** | Linux $KERNEL_VER (Lenovo ZUK TB324ZC) |"
             echo "| **KernelSU** | \`$KSU_BRANCH\` (\`$KSU_VER\`) |"
             echo "| **SuSFS** | \`$SUSFS_VER\` |"
             echo "| **Compiler** | $TOOLCHAIN_DISPLAY |"

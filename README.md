@@ -1,6 +1,6 @@
-# Popsicle GKI 6.12 Kernel for Xiaomi (SM8850)
+# Lenovo ZUK TB324ZC GKI 6.12 Kernel
 
-Automated GitHub Actions CI/CD pipeline for building and packaging **Popsicle GKI 6.12 Kernel** with **KernelSU (xxKSU)** and **SuSFS** for **Xiaomi Popsicle (Snapdragon 8 Elite / SM8850)** on Android 16.
+Automated GitHub Actions CI/CD pipeline for building and packaging **Lenovo ZUK TB324ZC GKI 6.12 Kernel** with **KernelSU (xxKSU)** and **SuSFS** for **Lenovo ZUK TB324ZC** on Android 16.
 
 ---
 
@@ -8,10 +8,9 @@ Automated GitHub Actions CI/CD pipeline for building and packaging **Popsicle GK
 
 | Property | Value |
 | :--- | :--- |
-| **Target Device** | Xiaomi Popsicle |
-| **SoC / Platform** | Qualcomm Snapdragon 8 Elite (`SM8850`) |
+| **Target Device** | Lenovo ZUK TB324ZC |
 | **Android Version** | Android 16 |
-| **Kernel Base** | Android Generic Kernel Image (`GKI 6.12.x`) |
+| **Kernel Base** | Android Generic Kernel Image (`GKI 6.12.38`) |
 | **Toolchain** | AOSP LLVM Clang 19 (`r536225`) + Rust 1.82.0 + LLD |
 
 ---
@@ -23,7 +22,7 @@ This repository features a fully automated upstream monitoring system:
 - **🎯 Dual-Upstream Tracking**:
   - **KernelSU**: Monitors `backslashxx/KernelSU:master` for new commits.
   - **SuSFS**: Monitors `gitlab.com/simonpunk/susfs4ksu:gki-android16-6.12` for new commits.
-- **🚀 Automated Build Dispatch**: Whenever an upstream update is detected, the workflow automatically updates state and triggers the `build-popsicle-ksu.yml` pipeline.
+- **🚀 Automated Build Dispatch**: Whenever an upstream update is detected, the workflow automatically updates state and triggers the `build-tb324zc-ksu.yml` pipeline.
 - **🏷️ Dynamic Commit Short Hash**: All release notes record and display the exact upstream commit IDs.
 
 ---
@@ -43,16 +42,16 @@ An integrated, zero-dependency cleanup workflow runs daily at **04:00 AM Beijing
 Artifact packages follow the standardized naming format:
 
 ```text
-KSU_Popsicle_6.12.<sub_level>+<KSU_VER>[-staging]-<Hook>[-SUSFS_v<SuSFS_VER>]-<YYMMDD>.zip
+KSU_TB324ZC_6.12.38+<KSU_VER>[-staging]-<Hook>[-SUSFS_v<SuSFS_VER>]-<YYMMDD>.zip
 ```
 
 ### Examples:
-- **`KSU_Popsicle_6.12.23+32595-manual-SUSFS_v2.2.0-260827.zip`**
-  *(Manual Security Hooks + SuSFS, GKI 6.12.23, Stable KSU `master` release)*
-- **`KSU_Popsicle_6.12.23+32595-manual-260827.zip`**
-  *(Manual Security Hooks, GKI 6.12.23, Clean KSU without SuSFS)*
-- **`KSU_Popsicle_6.12.23+32595-staging-lsm-SUSFS_v2.2.0-260827.zip`**
-  *(LSM Security Hooks + SuSFS, GKI 6.12.23, KSU `staging` pre-release)*
+- **`KSU_TB324ZC_6.12.38+32595-manual-SUSFS_v2.2.0-260827.zip`**
+  *(Manual Security Hooks + SuSFS, GKI 6.12.38, Stable KSU `master` release)*
+- **`KSU_TB324ZC_6.12.38+32595-manual-260827.zip`**
+  *(Manual Security Hooks, GKI 6.12.38, Clean KSU without SuSFS)*
+- **`KSU_TB324ZC_6.12.38+32595-staging-lsm-SUSFS_v2.2.0-260827.zip`**
+  *(LSM Security Hooks + SuSFS, GKI 6.12.38, KSU `staging` pre-release)*
 
 ---
 
