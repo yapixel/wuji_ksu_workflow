@@ -1778,7 +1778,7 @@ index 6d29cab..77213f6 100644
  	if (error >= 0)
  		error = buf.error;
 diff --git a/fs/stat.c b/fs/stat.c
-index adb071b..d1d6131 100644
+index adb071b..0b92865 100644
 --- a/fs/stat.c
 +++ b/fs/stat.c
 @@ -20,12 +20,22 @@
@@ -1835,6 +1835,33 @@ index adb071b..d1d6131 100644
  
  	generic_fillattr(idmap, request_mask, inode, stat);
  	return 0;
+@@ -251,10 +275,26 @@ static int vfs_statx_path(struct path *path, int flags, struct kstat *stat,
+ 	int error = vfs_getattr(path, stat, request_mask, flags);
+ 
+ 	if (request_mask & STATX_MNT_ID_UNIQUE) {
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++		if (real_mount(path->mnt)->mnt_id >= DEFAULT_KSU_MNT_ID &&
++			likely(susfs_is_current_proc_umounted_app()))
++			stat->mnt_id = susfs_get_non_sus_mnt_id_unique_from_mnt(real_mount(path->mnt));
++		else
++			stat->mnt_id = real_mount(path->mnt)->mnt_id_unique;
++#else
+ 		stat->mnt_id = real_mount(path->mnt)->mnt_id_unique;
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 		stat->result_mask |= STATX_MNT_ID_UNIQUE;
+ 	} else {
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++		if (real_mount(path->mnt)->mnt_id >= DEFAULT_KSU_MNT_ID &&
++			likely(susfs_is_current_proc_umounted_app()))
++			stat->mnt_id = susfs_get_non_sus_mnt_id_from_mnt(real_mount(path->mnt));
++		else
++			stat->mnt_id = real_mount(path->mnt)->mnt_id;
++#else
+ 		stat->mnt_id = real_mount(path->mnt)->mnt_id;
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ 		stat->result_mask |= STATX_MNT_ID;
+ 	}
+ 
 diff --git a/fs/statfs.c b/fs/statfs.c
 index 83c5d3f..43b0b65 100644
 --- a/fs/statfs.c

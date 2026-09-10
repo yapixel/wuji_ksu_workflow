@@ -203,7 +203,7 @@ index 9257980..d25737a 100644
  
  install_ksu_fd:
 diff --git a/kernel/ksu.c b/kernel/ksu.c
-index 80f981b..e9662fb 100644
+index a0acfc3..db3e766 100644
 --- a/kernel/ksu.c
 +++ b/kernel/ksu.c
 @@ -20,6 +20,10 @@
