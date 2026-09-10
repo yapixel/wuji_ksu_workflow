@@ -43,10 +43,10 @@ jobs:
           sudo apt-get install -y --no-install-recommends aria2 patch
 
       # ======================================================================
-      # SOURCE 1: latest upstream 50
+      # SOURCE 1: latest 50 patch from susfs4ksu
       # ======================================================================
 
-      - name: Fetch latest upstream 50 source
+      - name: Fetch latest 50 patch from susfs4ksu
         run: |
           set -euo pipefail
 
@@ -56,10 +56,10 @@ jobs:
             --no-tags \
             --branch="${SUSFS_REPO_BRANCH}" \
             "${SUSFS_REPO_URL}" \
-            upstream-susfs
+            susfs4ksu
 
           mapfile -t CANDIDATES < <(
-            find upstream-susfs/kernel_patches \
+            find susfs4ksu/kernel_patches \
               -maxdepth 1 \
               -type f \
               -name '50_add_susfs_in_gki-android16-6.12*.patch' \
@@ -67,7 +67,7 @@ jobs:
           )
 
           if [ "${#CANDIDATES[@]}" -ne 1 ]; then
-            echo "Expected exactly one upstream Android16/6.12 50 patch." >&2
+            echo "Expected exactly one upstream Android16/6.12 50 patch in susfs4ksu." >&2
             printf 'Found: %s\n' "${CANDIDATES[@]:-<none>}" >&2
             exit 1
           fi
@@ -77,7 +77,7 @@ jobs:
 
           echo "UPSTREAM_50_SHA=$(sha256sum "${RUNNER_TEMP}/upstream-50.patch" | awk '{print $1}')" >> "$GITHUB_ENV"
 
-          echo "=== upstream 50 ==="
+          echo "=== 50 patch from susfs4ksu ==="
           echo "${CANDIDATES[0]}"
           sha256sum "${RUNNER_TEMP}/upstream-50.patch"
 
