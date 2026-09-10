@@ -1,4 +1,4 @@
-name: Refresh Validated SuSFS 51 + KernelSU 11
+name: Refresh Validated SuSFS 50/51 + KernelSU 11
 
 on:
   workflow_dispatch:
@@ -26,7 +26,7 @@ env:
 
 jobs:
   refresh:
-    name: Generate and validate 51 + 11
+    name: Generate and validate 50 + 51 + 11
     runs-on: ubuntu-latest
 
     steps:
@@ -73,13 +73,22 @@ jobs:
           fi
 
           cp "${CANDIDATES[0]}" "${RUNNER_TEMP}/upstream-50.patch"
+          cp "${CANDIDATES[0]}" "${GITHUB_WORKSPACE}/${PATCH_50}"
           test -s "${RUNNER_TEMP}/upstream-50.patch"
+          test -s "${GITHUB_WORKSPACE}/${PATCH_50}"
 
           echo "UPSTREAM_50_SHA=$(sha256sum "${RUNNER_TEMP}/upstream-50.patch" | awk '{print $1}')" >> "$GITHUB_ENV"
 
           echo "=== 50 patch from susfs4ksu ==="
           echo "${CANDIDATES[0]}"
           sha256sum "${RUNNER_TEMP}/upstream-50.patch"
+
+      - name: Upload new 50 patch artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: 50_add_susfs_in_gki-android16-6.12.patch
+          path: ${{ runner.temp }}/upstream-50.patch
+          if-no-files-found: error
 
       # ======================================================================
       # GENERATE 51 FROM 50
@@ -443,6 +452,20 @@ jobs:
           echo "final 51 : ${PATCH_51}"
           echo "final 11 : ${PATCH_11}"
 
+      - name: Upload clean 51 patch artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: 51_add_susfs_in_gki-android16-6.12.38-deinlined.patch
+          path: ${{ github.workspace }}/${{ env.PATCH_51 }}
+          if-no-files-found: error
+
+      - name: Upload clean 11 patch artifact
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: 11_enable_susfs_for_ksu.patch
+          path: ${{ github.workspace }}/${{ env.PATCH_11 }}
+          if-no-files-found: error
+
       - name: Commit validated patch refresh
         run: |
           set -euo pipefail
@@ -460,7 +483,7 @@ jobs:
           git diff --cached --check
 
           git commit \
-            -m "chore: refresh validated SuSFS 51 and KernelSU 11 [skip ci]" \
+            -m "chore: refresh validated SuSFS 50/51 and KernelSU 11 [skip ci]" \
             -m "upstream 50 sha256: ${UPSTREAM_50_SHA}" \
             -m "upstream xx sha256: ${UPSTREAM_XX_SHA}"
 
