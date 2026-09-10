@@ -1,0 +1,3 @@
+# Ignore whitespace errors for patch and diff files
+*.patch -whitespace
+*.diff -whitespace

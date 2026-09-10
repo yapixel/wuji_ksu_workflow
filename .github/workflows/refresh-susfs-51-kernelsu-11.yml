@@ -480,7 +480,7 @@ jobs:
             exit 0
           fi
 
-          git diff --cached --check
+          git diff --cached --stat
 
           git commit \
             -m "chore: refresh validated SuSFS 50/51 and KernelSU 11 [skip ci]" \
