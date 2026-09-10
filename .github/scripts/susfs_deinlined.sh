@@ -51,19 +51,40 @@ def remove_duplicate_plus_empty(lines):
         prev_plus_empty = is_plus_empty
     return result
 
+def strip_comment(l):
+    s = l.strip()
+    for marker in ['//', '/*']:
+        idx = s.find(marker)
+        if idx != -1:
+            s = s[:idx].strip()
+    return s
+
+def is_if(l):
+    s = strip_comment(l)
+    return s.startswith('+#if') or s.startswith('+ #if')
+
+def is_else(l):
+    s = strip_comment(l)
+    return s == '+#else' or s == '+ #else'
+
+def is_endif(l):
+    s = strip_comment(l)
+    return s == '+#endif' or s == '+ #endif'
+
 def process_input_c(body):
     result = []
     i = 0
     replaced = False
     while i < len(body):
         line = body[i]
-        if line.strip() == '+#ifdef CONFIG_KSU_SUSFS':
+        if strip_comment(line) == '+#ifdef CONFIG_KSU_SUSFS':
             depth = 1
             j = i + 1
             while j < len(body) and depth > 0:
-                if body[j].strip() == '+#ifdef CONFIG_KSU_SUSFS':
+                cur = body[j]
+                if is_if(cur):
                     depth += 1
-                elif body[j].strip() == '+#endif':
+                elif is_endif(cur):
                     depth -= 1
                 j += 1
             if not replaced:
@@ -81,50 +102,90 @@ def process_normal_file(body, target):
     i = 0
     while i < len(body):
         line = body[i]
+        clean_line = strip_comment(line)
 
-        if line.strip() == '+#ifdef CONFIG_KSU_SUSFS':
+        if clean_line in ['+#ifdef CONFIG_KSU_SUSFS', '+#if defined(CONFIG_KSU_SUSFS)', '+#if IS_ENABLED(CONFIG_KSU_SUSFS)']:
             block_end = i + 1
             depth = 1
-            has_include = False
-            while block_end < len(body) and depth > 0:
-                if body[block_end].strip() == '+#ifdef CONFIG_KSU_SUSFS':
-                    depth += 1
-                elif body[block_end].strip() == '+#endif':
-                    depth -= 1
-                if '#include' in body[block_end]:
-                    has_include = True
-                block_end += 1
-
-            if has_include:
-                remaining = '\n'.join(body[block_end:])
-                if 'CONFIG_KSU_SUSFS_' in remaining:
-                    result.extend(body[i:block_end])
-                    i = block_end
-                    continue
-
-            i = block_end
-            continue
-
-        if line.strip() == '+#ifndef CONFIG_KSU_SUSFS':
-            depth = 1
-            block_end = i + 1
             else_idx = -1
             endif_idx = -1
+            has_include = False
+            has_susfs_func = False
+
             while block_end < len(body) and depth > 0:
-                stripped = body[block_end].strip()
-                if stripped.startswith('+#if'):
+                cur_line = body[block_end]
+                if is_if(cur_line):
                     depth += 1
-                elif stripped == '+#else' and depth == 1:
+                elif is_else(cur_line) and depth == 1:
                     else_idx = block_end
-                elif stripped == '+#endif':
+                elif is_endif(cur_line):
                     depth -= 1
                     if depth == 0:
                         endif_idx = block_end
+                        break
+                if '#include' in cur_line:
+                    has_include = True
+                if 'susfs_get_non_sus_' in cur_line:
+                    has_susfs_func = True
                 block_end += 1
 
+            if endif_idx == -1:
+                endif_idx = block_end - 1
+
+            # 1. Real susfs helper functions (e.g. in fs/namespace.c) -> MUST KEEP
+            if has_susfs_func:
+                result.extend(body[i : endif_idx + 1])
+                i = endif_idx + 1
+                continue
+
+            # 2. Include header needed by subsequent CONFIG_KSU_SUSFS_ features -> KEEP
+            if has_include and else_idx == -1:
+                remaining = '\n'.join(body[endif_idx + 1:])
+                if 'CONFIG_KSU_SUSFS_' in remaining:
+                    result.extend(body[i : endif_idx + 1])
+                    i = endif_idx + 1
+                    continue
+
+            # 3. If there is an #else block, it contains original kernel code -> KEEP #else branch
             if else_idx > 0 and endif_idx > 0:
-                result.extend(body[else_idx + 1:endif_idx])
-            i = endif_idx + 1 if endif_idx > 0 else block_end
+                result.extend(body[else_idx + 1 : endif_idx])
+                i = endif_idx + 1
+                continue
+
+            # 4. Otherwise it is a pure inline hook with no original code -> DROP
+            i = endif_idx + 1
+            continue
+
+        if clean_line in ['+#ifndef CONFIG_KSU_SUSFS', '+#if !defined(CONFIG_KSU_SUSFS)', '+#if !IS_ENABLED(CONFIG_KSU_SUSFS)']:
+            block_end = i + 1
+            depth = 1
+            else_idx = -1
+            endif_idx = -1
+
+            while block_end < len(body) and depth > 0:
+                cur_line = body[block_end]
+                if is_if(cur_line):
+                    depth += 1
+                elif is_else(cur_line) and depth == 1:
+                    else_idx = block_end
+                elif is_endif(cur_line):
+                    depth -= 1
+                    if depth == 0:
+                        endif_idx = block_end
+                        break
+                block_end += 1
+
+            if endif_idx == -1:
+                endif_idx = block_end - 1
+
+            # #ifndef CONFIG_KSU_SUSFS:
+            # - If there is an #else, the #ifndef branch is original code, #else is hook code
+            # -> KEEP #ifndef branch (i+1 to else_idx), DROP #else branch
+            if else_idx > 0 and endif_idx > 0:
+                result.extend(body[i + 1 : else_idx])
+            elif endif_idx > 0:
+                result.extend(body[i + 1 : endif_idx])
+            i = endif_idx + 1
             continue
 
         result.append(line)
@@ -163,6 +224,9 @@ def clean_body(body):
                     break
                 hunk_lines.append(body[j])
                 j += 1
+
+            while hunk_lines and hunk_lines[-1] == '':
+                hunk_lines.pop()
 
             ins_all = sum(1 for l in hunk_lines if l.startswith('+') and not l.startswith('+++'))
             dels_all = sum(1 for l in hunk_lines if l.startswith('-') and not l.startswith('---'))
