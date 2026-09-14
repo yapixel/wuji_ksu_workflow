@@ -1,15 +1,22 @@
 #!/bin/bash
+# SPDX-License-Identifier: GPL-3.0-or-later
 # ==============================================================================
-# Script: susfs_deinlined.sh
+# Script:      susfs_deinlined.sh
 # Description: Converts official SUSFS inline-hook patch to a de-inlined version
-# Author: midori01 <lv@lvlv.lv>, Gemini
-# Updated: 2026-09-10
-# Version: 2.0.0
+# Author:      midori01 <lv@lvlv.lv>, Gemini
+# Version:     2.1.1
+# Date:        2026-09-14
 # ==============================================================================
 
 set -e
 
-if [ $# -lt 1 ]; then
+if [ "$1" = "-v" ] || [ "$1" = "--version" ]; then
+    VERSION=$(grep -m1 '^# Version:' "${BASH_SOURCE[0]:-$0}" 2>/dev/null | cut -d: -f2 | xargs)
+    echo "susfs_deinlined.sh v${VERSION:-2.1.1}"
+    exit 0
+fi
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ] || [ $# -lt 1 ]; then
     echo "Usage: $0 <official_susfs_patch> [output_patch]"
     exit 1
 fi
@@ -17,10 +24,36 @@ fi
 INPUT="$1"
 OUTPUT="${2:-deinlined.patch}"
 
-python3 - "$INPUT" "$OUTPUT" << 'EOF'
+python3 - "$INPUT" "$OUTPUT" "${BASH_SOURCE[0]:-$0}" << 'EOF'
 import sys
 import os
 import re
+
+def print_script_header_banner(script_path):
+    divider = "=" * 60
+    printed = False
+    if script_path and os.path.isfile(script_path):
+        try:
+            with open(script_path, "r", encoding="utf-8", errors="replace") as f:
+                in_header = False
+                for line in f:
+                    s = line.strip()
+                    if s.startswith("# =="):
+                        if not in_header:
+                            in_header = True
+                            print(divider)
+                            printed = True
+                            continue
+                        else:
+                            break
+                    if in_header and s.startswith("#"):
+                        clean = s.lstrip("#").strip()
+                        if clean:
+                            print(clean)
+        except Exception:
+            pass
+    if printed:
+        print(divider)
 
 def read_patch(filename):
     try:
@@ -99,32 +132,6 @@ def is_ksu_susfs_ifndef(line):
         line
     ))
 
-def process_input_c(body):
-    result = []
-    i = 0
-    replaced = False
-    while i < len(body):
-        line = body[i]
-        clean_line = strip_comment(line)
-        if is_ksu_susfs_if(clean_line):
-            depth = 1
-            j = i + 1
-            while j < len(body) and depth > 0:
-                cur = body[j]
-                if is_if(cur):
-                    depth += 1
-                elif is_endif(cur):
-                    depth -= 1
-                j += 1
-            if not replaced:
-                result.append("+extern struct static_key_false ksu_input_hook_key_false;")
-                result.append("+")
-                replaced = True
-            i = j
-            continue
-        result.append(line)
-        i += 1
-    return remove_duplicate_plus_empty(result)
 
 def process_normal_file(body, target):
     result = []
@@ -296,29 +303,85 @@ def has_real_changes(body):
             return True
     return False
 
+HOOK_PATTERN = re.compile(r"\b(ksu_handle_\w+|ksu_hook_\w+)\b")
+
+def find_unique_hooks(lines):
+    hooks = []
+    for line in lines:
+        if line.startswith("+") and not line.startswith("+++"):
+            for m in HOOK_PATTERN.findall(line):
+                if m not in hooks:
+                    hooks.append(m)
+    return sorted(hooks)
+
 def process_patch(patch):
     target = get_target_file(patch)
     if not target:
-        return None
+        return None, None
+
+    orig_lines = patch.split("\n")
+    orig_hunks = sum(1 for l in orig_lines if l.startswith("@@"))
+    orig_hooks = find_unique_hooks(orig_lines)
 
     if target.startswith("security/"):
-        return None
+        info = {
+            "target": target,
+            "status": "DROP",
+            "reason": "selinux",
+            "orig_hunks": orig_hunks,
+            "kept_hunks": 0,
+            "orig_hooks": orig_hooks,
+            "dropped_hooks": orig_hooks,
+            "remaining_hooks": [],
+        }
+        return None, info
 
     header, body = get_body(patch)
     if not body:
-        return None
+        info = {
+            "target": target,
+            "status": "DROP",
+            "reason": "empty",
+            "orig_hunks": orig_hunks,
+            "kept_hunks": 0,
+            "orig_hooks": orig_hooks,
+            "dropped_hooks": orig_hooks,
+            "remaining_hooks": [],
+        }
+        return None, info
 
-    if target == "drivers/input/input.c":
-        new_body = process_input_c(body)
-    else:
-        new_body = process_normal_file(body, target)
-
+    new_body = process_normal_file(body, target)
     new_body = clean_body(new_body)
 
     if not has_real_changes(new_body):
-        return None
+        info = {
+            "target": target,
+            "status": "DROP",
+            "reason": "stripped" if orig_hooks else "no_changes",
+            "orig_hunks": orig_hunks,
+            "kept_hunks": 0,
+            "orig_hooks": orig_hooks,
+            "dropped_hooks": orig_hooks,
+            "remaining_hooks": [],
+        }
+        return None, info
 
-    return "\n".join(header + new_body)
+    remaining_hooks = find_unique_hooks(new_body)
+    dropped_hooks = [h for h in orig_hooks if h not in remaining_hooks]
+    kept_hunks = sum(1 for l in new_body if l.startswith("@@"))
+
+    info = {
+        "target": target,
+        "status": "KEEP",
+        "reason": None,
+        "orig_hunks": orig_hunks,
+        "kept_hunks": kept_hunks,
+        "orig_hooks": orig_hooks,
+        "dropped_hooks": dropped_hooks,
+        "remaining_hooks": remaining_hooks,
+    }
+
+    return "\n".join(header + new_body), info
 
 def main():
     if len(sys.argv) < 2:
@@ -327,6 +390,9 @@ def main():
 
     input_file = sys.argv[1]
     output_file = sys.argv[2] if len(sys.argv) > 2 else "deinlined.patch"
+    script_file = sys.argv[3] if len(sys.argv) > 3 else None
+
+    print_script_header_banner(script_file)
 
     content = read_patch(input_file)
     file_patches = split_patch(content)
@@ -335,21 +401,36 @@ def main():
         print("Error: No diff --git sections found in patch!", file=sys.stderr)
         sys.exit(1)
 
-    print(f"Processing {len(file_patches)} file patches...")
+    print(f"Processing {len(file_patches)} files...")
+
+    results = []
+    for patch in file_patches:
+        res, info = process_patch(patch)
+        if info:
+            results.append((res, info))
+
+    if not results:
+        print("Error: No valid patches found!", file=sys.stderr)
+        sys.exit(1)
 
     processed = []
     removed = []
 
-    for patch in file_patches:
-        target = get_target_file(patch)
-        result = process_patch(patch)
+    for res, info in results:
+        status = info["status"]
+        tgt = info["target"]
 
-        if result:
-            processed.append(result.rstrip("\n"))
-            print(f"  [KEEP] {target}")
+        orig_h = info["orig_hunks"]
+        kept_h = info["kept_hunks"]
+        drop_h = orig_h - kept_h
+        h_word = "hunk" if orig_h == 1 else "hunks"
+
+        if status == "KEEP":
+            processed.append(res.rstrip("\n"))
         else:
-            removed.append(target)
-            print(f"  [DROP] {target}")
+            removed.append(tgt)
+
+        print(f"  [{status}] {tgt} ({drop_h}/{orig_h} {h_word} dropped)")
 
     if not processed:
         print("Error: No file patches remain after processing!", file=sys.stderr)
@@ -363,14 +444,36 @@ def main():
         f.write("\n".join(processed))
         f.write("\n")
 
-    print(f"\nDone! Output: {output_file}")
-    print(f"Kept: {len(processed)} files")
-    print(f"Dropped: {len(removed)} files")
-    for f in removed:
-        print(f"  - {f}")
+    print("\nSummary:")
+    total_orig_hunks = sum(info["orig_hunks"] for _, info in results)
+    total_kept_hunks = sum(info["kept_hunks"] for _, info in results)
+    total_dropped_hunks = total_orig_hunks - total_kept_hunks
+
+    print(f"  Total files: {len(results)} ({len(processed)} kept, {len(removed)} dropped)")
+    print(f"  Total hunks: {total_orig_hunks} ({total_kept_hunks} kept, {total_dropped_hunks} dropped)")
+
+    all_dropped_hook_files = [info for _, info in results if info["dropped_hooks"]]
+    total_hooks_dropped = sum(len(info["dropped_hooks"]) for info in all_dropped_hook_files)
+    dropped_files = [info for _, info in results if info["status"] == "DROP"]
+
+    if dropped_files:
+        print(f"  Dropped files ({len(dropped_files)}):")
+        for info in dropped_files:
+            print(f"    - {info['target']}")
+    else:
+        print("  Dropped files: 0")
+
+    if total_hooks_dropped > 0:
+        print(f"  Stripped inline hooks ({total_hooks_dropped}):")
+        for info in all_dropped_hook_files:
+            h_names = ", ".join(re.sub(r"^(?:ksu_handle_|ksu_hook_)", "", h) for h in info["dropped_hooks"])
+            cnt = len(info["dropped_hooks"])
+            print(f"    - {info['target']} ({cnt}): {h_names}")
+    else:
+        print("  Stripped inline hooks: 0")
+
+    print(f"\nDone! Successfully written to: {output_file}")
 
 if __name__ == "__main__":
     main()
 EOF
-
-echo "Done"
