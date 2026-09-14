@@ -1,8 +1,8 @@
 diff --git a/kernel/Kconfig b/kernel/Kconfig
-index 45e09d1..05319f8 100644
+index 45e09d1..91de6c1 100644
 --- a/kernel/Kconfig
 +++ b/kernel/Kconfig
-@@ -130,4 +130,107 @@ config KSU_HEURISTIC_IN_TREE_BUILD
+@@ -130,4 +130,99 @@ config KSU_HEURISTIC_IN_TREE_BUILD
  	depends on KSU
  	default y
  
@@ -44,14 +44,6 @@ index 45e09d1..05319f8 100644
 +	help
 +	  - Allow spoofing the kstat of user-defined file/directory.
 +	  - Effective on all processes with (uid % 100000) >= 10000.
-+
-+config KSU_SUSFS_TRY_UMOUNT
-+	bool "Enable to use ksu's try_umount"
-+	depends on KSU_SUSFS
-+	default n
-+	help
-+	  - Allow using try_umount to umount other user-defined mount paths prior to ksu's default umount paths.
-+	  - Effective only on zygote spawned umounted user app process.
 +
 +config KSU_SUSFS_SPOOF_UNAME
 +	bool "Enable to spoof uname"
@@ -110,51 +102,16 @@ index 45e09d1..05319f8 100644
 +endmenu
 +
  endmenu
-diff --git a/kernel/feature/kernel_umount.c b/kernel/feature/kernel_umount.c
-index 15aded3..5c57447 100644
---- a/kernel/feature/kernel_umount.c
-+++ b/kernel/feature/kernel_umount.c
-@@ -30,7 +30,11 @@ static inline void ksu_umount_mnt(const char *mnt, struct path *path, int flags)
- 		pr_info("umount %s failed: %d\n", mnt, err);
- }
- 
-+#if defined(CONFIG_KSU_SUSFS) && defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
-+void try_umount(const char *mnt, int flags)
-+#else
- static inline void try_umount(const char *mnt, int flags)
-+#endif // #if defined(CONFIG_KSU_SUSFS) && defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
- {
- 	struct path path;
- 	int err = kern_path(mnt, 0, &path);
-@@ -59,6 +63,7 @@ static inline int ksu_handle_umount(struct cred *new, const struct cred *old)
- 	if (!ksu_module_mounted)
- 		return 0;
- 
-+#ifndef CONFIG_KSU_SUSFS
- 	// There are 6 scenarios:
- 	// 1. Normal app: zygote -> appuid
- 	// 2. Isolated process forked from zygote: zygote -> isolated_process
-@@ -81,6 +86,7 @@ static inline int ksu_handle_umount(struct cred *new, const struct cred *old)
- 		pr_info("handle umount ignore non zygote child: %d\n", current->pid);
- 		return 0;
- 	}
-+#endif // #ifndef CONFIG_KSU_SUSFS
- 
- #ifdef CONFIG_KSU_HOSTSREDIRECT
- 	set_thread_flag(TIF_KSU_UNMOUNTABLE);
 diff --git a/kernel/hook/setuid_hook.c b/kernel/hook/setuid_hook.c
-index 9257980..d25737a 100644
+index 9257980..4d169f7 100644
 --- a/kernel/hook/setuid_hook.c
 +++ b/kernel/hook/setuid_hook.c
-@@ -1,3 +1,39 @@
+@@ -1,3 +1,33 @@
 +#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs_def.h>
 +#include "selinux/selinux.h"
 +
 +extern struct work_struct susfs_extra_works;
-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-+extern void susfs_try_umount(uid_t uid);
-+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +
 +static inline void ksu_handle_extra_susfs_work(void)
 +{
@@ -173,9 +130,6 @@ index 9257980..d25737a 100644
 +		susfs_set_current_proc_umounted();
 +		if (is_zygote_next)
 +			susfs_set_current_proc_umounted_for_zygote_next();
-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-+		susfs_try_umount(new_uid);
-+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +		if (!is_zygote_next)
 +			ksu_handle_umount(new, old);
 +		ksu_handle_extra_susfs_work();
@@ -186,7 +140,7 @@ index 9257980..d25737a 100644
  static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const struct cred *old)
  {
  	if (!new || !old)
-@@ -22,7 +58,15 @@ static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const st
+@@ -22,7 +52,15 @@ static __always_inline void ksu_handle_setresuid_cred(struct cred *new, const st
  		goto kill_seccomp;
  
  	// Handle kernel umount
@@ -386,7 +340,7 @@ index fe628e3..0beca50 100644
  		break;
  	}
 diff --git a/kernel/supercall/supercall.c b/kernel/supercall/supercall.c
-index 59ec582..189c357 100644
+index 59ec582..44cc009 100644
 --- a/kernel/supercall/supercall.c
 +++ b/kernel/supercall/supercall.c
 @@ -1,3 +1,6 @@
@@ -396,7 +350,7 @@ index 59ec582..189c357 100644
  #define KSU_DRIVER_PERMISSION_SU_SESSION (1UL << 0)
  
  struct ksu_driver_context {
-@@ -83,6 +86,94 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user
+@@ -83,6 +86,88 @@ int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user
  	if (magic1 != KSU_INSTALL_MAGIC1)
  		return 0;
  
@@ -432,12 +386,6 @@ index 59ec582..189c357 100644
 +			return 0;
 +		}
 +#endif // #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
-+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
-+		if (cmd == CMD_SUSFS_ADD_TRY_UMOUNT) {
-+			susfs_add_try_umount(arg);
-+			return 0;
-+		}
-+#endif // #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +		if (cmd == CMD_SUSFS_SET_UNAME) {
 +			susfs_set_uname(arg);
