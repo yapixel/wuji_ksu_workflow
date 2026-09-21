@@ -58,7 +58,7 @@ runs:
         # Localversion (clean replacement)
         ########################################
         sed -i '/CONFIG_LOCALVERSION/d' "$DEFCONFIG"
-        echo 'CONFIG_LOCALVERSION="-android16-5-g6928909e3148-abogki444322847-4k"' >> "$DEFCONFIG"
+        echo 'CONFIG_LOCALVERSION="-android16-5-g74ad46052215-ab14494108-4k"' >> "$DEFCONFIG"
 
         ########################################
         # Core Boot + Performance
