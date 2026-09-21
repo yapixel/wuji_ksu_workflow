@@ -640,7 +640,7 @@ jobs:
           READELF: llvm-readelf
           STRIP: llvm-strip
           SOURCE_DATE_EPOCH: 1757653061
-          KBUILD_BUILD_TIMESTAMP: "Fri Sep 12 04:57:41 UTC 2025"
+          KBUILD_BUILD_TIMESTAMP: "Tue Nov 25 06:25:30 UTC 2025"
           KBUILD_BUILD_HOST: "build-host"
           KBUILD_BUILD_USER: "kleaf"
           CCACHE_BASEDIR: ${{ github.workspace }}
