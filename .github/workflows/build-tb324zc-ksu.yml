@@ -1,4 +1,4 @@
-name: Build Lenovo TB324ZC ZUKOS Kernel GKI + KSU r38
+name: Build Lenovo TB324ZC ZUKOS Kernel GKI + KSU
 on:
   workflow_dispatch:
     inputs:
