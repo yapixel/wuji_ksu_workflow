@@ -300,7 +300,7 @@ jobs:
           OBJDUMP: llvm-objdump
           READELF: llvm-readelf
           STRIP: llvm-strip
-          SOURCE_DATE_EPOCH: 1757653061
+          SOURCE_DATE_EPOCH: 1764051930
           KBUILD_BUILD_TIMESTAMP: "Tue Nov 25 06:25:30 UTC 2025"
           KBUILD_BUILD_HOST: "build-host"
           KBUILD_BUILD_USER: "kleaf"
@@ -639,7 +639,7 @@ jobs:
           OBJDUMP: llvm-objdump
           READELF: llvm-readelf
           STRIP: llvm-strip
-          SOURCE_DATE_EPOCH: 1757653061
+          SOURCE_DATE_EPOCH: 1764051930
           KBUILD_BUILD_TIMESTAMP: "Tue Nov 25 06:25:30 UTC 2025"
           KBUILD_BUILD_HOST: "build-host"
           KBUILD_BUILD_USER: "kleaf"
