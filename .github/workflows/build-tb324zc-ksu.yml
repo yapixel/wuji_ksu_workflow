@@ -181,7 +181,7 @@ jobs:
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
-          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-09_r38/common-android16-6.12-2025-09_r38.tar.gz"
+          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-09_r15/common-android16-6.12-2025-09_r15.tar.gz"
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
@@ -523,7 +523,7 @@ jobs:
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
-          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-09_r38/common-android16-6.12-2025-09_r38.tar.gz"
+          COMMON_URL="https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12-2025-09_r15/common-android16-6.12-2025-09_r15.tar.gz"
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
