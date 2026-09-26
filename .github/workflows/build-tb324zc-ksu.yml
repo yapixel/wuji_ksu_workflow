@@ -261,12 +261,14 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
 
-          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
-          bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
-          patch -p1 < deinlined.patch
-          
+          #SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
+          #bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
+          #patch -p1 < deinlined.patch
           #patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
 
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/yapixel/xxksu_susfs_patch/blob/main/patches/gki-android16-6.12/51_deinlined_susfs_hooks_gki-android16-6.12.patch")
+          
+          
       - name: Apply KernelSU SuSFS Patch (11)
         if: matrix.enable_susfs == 'true'
         working-directory: kernel_workspace/common/KernelSU
@@ -602,10 +604,13 @@ jobs:
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
           
-          SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
-          bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
-          patch -p1 < deinlined.patch
+          #SUSFS_PATCH="${{ github.workspace }}/.github/patches/xxksu/50_add_susfs_in_gki-android16-6.12.38.patch"
+          #bash "${{ github.workspace }}/.github/scripts/susfs_deinlined.sh" "$SUSFS_PATCH"
+          #patch -p1 < deinlined.patch
           #patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/51_add_susfs_in_gki-android16-6.12.38-deinlined.patch"
+
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/yapixel/xxksu_susfs_patch/blob/main/patches/gki-android16-6.12/51_deinlined_susfs_hooks_gki-android16-6.12.patch")
+          
 
       - name: Apply KernelSU SuSFS Patch (11)
         if: matrix.enable_susfs == 'true'
