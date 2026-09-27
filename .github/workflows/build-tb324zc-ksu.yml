@@ -273,8 +273,9 @@ jobs:
         working-directory: kernel_workspace/common/KernelSU
         run: |
           echo "=== [11] Apply SuSFS integration patch to KernelSU ==="
-          #patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/11_enable_susfs_for_ksu.patch"
-          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
+          
+          #patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/11_enable_susfs_for_ksu.patch")
 
       - name: Inject Defconfig Flags
         uses: ./.github/actions/kernel-config
@@ -616,8 +617,9 @@ jobs:
         working-directory: kernel_workspace/common/KernelSU
         run: |
           echo "=== [11] Apply SuSFS integration patch to KernelSU ==="
-          #patch -p1 < "${{ github.workspace }}/.github/patches/xxksu/11_enable_susfs_for_ksu.patch"
-          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
+          #patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/11_enable_susfs_for_ksu.patch")
+
 
       - name: Inject Defconfig Flags
         uses: ./.github/actions/kernel-config
