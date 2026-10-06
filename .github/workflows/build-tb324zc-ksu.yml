@@ -193,12 +193,22 @@ jobs:
 
       - name: Clone Scripts & AnyKernel3
         run: |
+          set -euo pipefail
           git clone --depth=1 --single-branch --no-tags "${{ env.SCRIPTS_REPO }}" sh &
+          pid_sh=$!
           git clone --depth=1 --single-branch --no-tags "${{ env.ANYKERNEL_REPO }}" AnyKernel3 &
+          pid_ak=$!
           if [ "${{ matrix.enable_susfs }}" = "true" ]; then
-            git clone --depth=1 --single-branch --no-tags --branch="${{ env.SUSFS_REPO_BRANCH }}" "${{ env.SUSFS_REPO_URL }}" susfs4ksu &
+            if ! git clone --depth=1 --single-branch --no-tags --branch="${{ env.SUSFS_REPO_BRANCH }}" "${{ env.SUSFS_REPO_URL }}.git" susfs4ksu; then
+              echo "GitLab git clone failed, falling back to archive tarball..."
+              rm -rf susfs4ksu
+              mkdir -p susfs4ksu
+              curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C susfs4ksu
+            fi
+            test -f "susfs4ksu/kernel_patches/fs/susfs.c"
           fi
-          wait
+          wait "$pid_sh"
+          wait "$pid_ak"
 
       - name: Setup xxKSU Source
         working-directory: kernel_workspace/common
@@ -227,6 +237,11 @@ jobs:
           TOOLCHAIN_DISPLAY="$RAW_TOOLCHAIN_STR"
 
           SUSFS_VER="unknown"
+          if [ "${{ matrix.enable_susfs }}" = "true" ] && [ ! -f "susfs4ksu/kernel_patches/include/linux/susfs.h" ]; then
+            echo "susfs4ksu missing in metadata, fetching archive tarball..."
+            mkdir -p susfs4ksu
+            curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C susfs4ksu
+          fi
           if [ -f "susfs4ksu/kernel_patches/include/linux/susfs.h" ]; then
             SUSFS_VER=$(grep -E '#define SUSFS_VERSION' susfs4ksu/kernel_patches/include/linux/susfs.h | awk -F '"' '{print $2}')
           fi
@@ -257,6 +272,11 @@ jobs:
         working-directory: kernel_workspace/common
         run: |
           echo "=== [51] Apply SuSFS de-inlined patch to GKI 6.12.38 common tree ==="
+          if [ ! -f "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" ]; then
+            echo "susfs4ksu missing, downloading archive fallback..."
+            mkdir -p "${{ github.workspace }}/susfs4ksu"
+            curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C "${{ github.workspace }}/susfs4ksu"
+          fi
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/
@@ -538,12 +558,22 @@ jobs:
 
       - name: Clone Scripts & AnyKernel3
         run: |
+          set -euo pipefail
           git clone --depth=1 --single-branch --no-tags "${{ env.SCRIPTS_REPO }}" sh &
+          pid_sh=$!
           git clone --depth=1 --single-branch --no-tags "${{ env.ANYKERNEL_REPO }}" AnyKernel3 &
+          pid_ak=$!
           if [ "${{ matrix.enable_susfs }}" = "true" ]; then
-            git clone --depth=1 --single-branch --no-tags --branch="${{ env.SUSFS_REPO_BRANCH }}" "${{ env.SUSFS_REPO_URL }}" susfs4ksu &
+            if ! git clone --depth=1 --single-branch --no-tags --branch="${{ env.SUSFS_REPO_BRANCH }}" "${{ env.SUSFS_REPO_URL }}.git" susfs4ksu; then
+              echo "GitLab git clone failed, falling back to archive tarball..."
+              rm -rf susfs4ksu
+              mkdir -p susfs4ksu
+              curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C susfs4ksu
+            fi
+            test -f "susfs4ksu/kernel_patches/fs/susfs.c"
           fi
-          wait
+          wait "$pid_sh"
+          wait "$pid_ak"
 
       - name: Setup xxKSU Source
         working-directory: kernel_workspace/common
@@ -572,6 +602,11 @@ jobs:
           TOOLCHAIN_DISPLAY="$RAW_TOOLCHAIN_STR"
 
           SUSFS_VER="unknown"
+          if [ "${{ matrix.enable_susfs }}" = "true" ] && [ ! -f "susfs4ksu/kernel_patches/include/linux/susfs.h" ]; then
+            echo "susfs4ksu missing in metadata, fetching archive tarball..."
+            mkdir -p susfs4ksu
+            curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C susfs4ksu
+          fi
           if [ -f "susfs4ksu/kernel_patches/include/linux/susfs.h" ]; then
             SUSFS_VER=$(grep -E '#define SUSFS_VERSION' susfs4ksu/kernel_patches/include/linux/susfs.h | awk -F '"' '{print $2}')
           fi
@@ -600,6 +635,11 @@ jobs:
         working-directory: kernel_workspace/common
         run: |
           echo "=== [51] Apply SuSFS de-inlined patch to GKI 6.12.38 common tree ==="
+          if [ ! -f "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" ]; then
+            echo "susfs4ksu missing, downloading archive fallback..."
+            mkdir -p "${{ github.workspace }}/susfs4ksu"
+            curl -fsSL "${{ env.SUSFS_REPO_URL }}/-/archive/${{ env.SUSFS_REPO_BRANCH }}/susfs4ksu-${{ env.SUSFS_REPO_BRANCH }}.tar.gz" | tar -xz --strip-components=1 -C "${{ github.workspace }}/susfs4ksu"
+          fi
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/susfs.c" fs/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs.h" include/linux/
           cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/susfs_def.h" include/linux/

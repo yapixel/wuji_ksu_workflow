@@ -50,13 +50,18 @@ jobs:
         run: |
           set -euo pipefail
 
-          git clone \
+          if ! git clone \
             --depth=1 \
             --single-branch \
             --no-tags \
             --branch="${SUSFS_REPO_BRANCH}" \
-            "${SUSFS_REPO_URL}" \
-            susfs4ksu
+            "${SUSFS_REPO_URL}.git" \
+            susfs4ksu; then
+            echo "GitLab git clone failed, falling back to archive tarball..."
+            rm -rf susfs4ksu
+            mkdir -p susfs4ksu
+            curl -fsSL "${SUSFS_REPO_URL}/-/archive/${SUSFS_REPO_BRANCH}/susfs4ksu-${SUSFS_REPO_BRANCH}.tar.gz" | tar -xz --strip-components=1 -C susfs4ksu
+          fi
 
           mapfile -t CANDIDATES < <(
             find susfs4ksu/kernel_patches \
