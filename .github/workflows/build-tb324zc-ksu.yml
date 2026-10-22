@@ -121,7 +121,7 @@ jobs:
 
           CCACHE_BIN="${{ github.workspace }}/.ccache-bin"
           mkdir -p "$CCACHE_BIN"
-          for prog in clang clang++ gcc g++ aarch64-linux-gnu-gcc; do
+          for prog in clang clang++ gcc g++; do
             ln -sf "$(which ccache)" "$CCACHE_BIN/$prog"
           done
           echo "$CCACHE_BIN" >> "$GITHUB_PATH"
@@ -184,6 +184,9 @@ jobs:
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
+          sed -i 's/-Werror//g' common/tools/lib/bpf/Makefile common/tools/bpf/resolve_btfids/Makefile 2>/dev/null || true
+          sed -i 's/char \*res;/const char \*res;/g' common/tools/lib/bpf/libbpf.c 2>/dev/null || true
+          sed -i 's/char \*next_path;/const char \*next_path;/g' common/tools/lib/bpf/libbpf.c 2>/dev/null || true
 
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/bin" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/build-tools/bin" >> "$GITHUB_PATH"
@@ -485,7 +488,7 @@ jobs:
 
           CCACHE_BIN="${{ github.workspace }}/.ccache-bin"
           mkdir -p "$CCACHE_BIN"
-          for prog in clang clang++ gcc g++ aarch64-linux-gnu-gcc; do
+          for prog in clang clang++ gcc g++; do
             ln -sf "$(which ccache)" "$CCACHE_BIN/$prog"
           done
           echo "$CCACHE_BIN" >> "$GITHUB_PATH"
@@ -548,6 +551,9 @@ jobs:
           aria2c -s 16 -x 16 -k 1M "$COMMON_URL" -o common.tar.gz
           mkdir -p common && tar -xzf common.tar.gz -C common && rm -f common.tar.gz
           sed -i 's/ -dirty//g' common/scripts/setlocalversion
+          sed -i 's/-Werror//g' common/tools/lib/bpf/Makefile common/tools/bpf/resolve_btfids/Makefile 2>/dev/null || true
+          sed -i 's/char \*res;/const char \*res;/g' common/tools/lib/bpf/libbpf.c 2>/dev/null || true
+          sed -i 's/char \*next_path;/const char \*next_path;/g' common/tools/lib/bpf/libbpf.c 2>/dev/null || true
 
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/bin" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/build-tools/bin" >> "$GITHUB_PATH"
