@@ -38,9 +38,9 @@ on:
         required: true
         type: choice
         options:
-          - 'r614150'
           - 'r536225'
-        default: 'r614150'
+          - 'r614150'
+        default: 'r536225'
       create_release:
         description: 'Create GitHub Release'
         required: true
@@ -896,7 +896,8 @@ jobs:
 
       - name: Create GitHub Release
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KSU_BRANCH: ${{ github.event.inputs.ksu_branch || 'master' }}
         run: |
           DATE=$(date +"%y%m%d")
@@ -958,14 +959,14 @@ jobs:
             echo "⚡ Release $TAG already exists for today. Overwriting assets and updating release..."
             gh release upload "$TAG" $ZIP_FILES --clobber
             gh release edit "$TAG" \
-              --target "${{ github.sha }}" \
+              --target "${{ github.ref_name }}" \
               $PRERELEASE_FLAG \
               --title "$RELEASE_TITLE" \
               --notes-file release_body.md
           else
             echo "🚀 Creating new release for $TAG..."
             gh release create "$TAG" $ZIP_FILES \
-              --target "${{ github.sha }}" \
+              --target "${{ github.ref_name }}" \
               $PRERELEASE_FLAG \
               --title "$RELEASE_TITLE" \
               --notes-file release_body.md
