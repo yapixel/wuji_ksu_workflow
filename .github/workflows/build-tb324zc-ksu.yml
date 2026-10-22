@@ -168,7 +168,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-rust1.82.0
+          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -188,6 +188,20 @@ jobs:
             wait
           else
             echo "✅ Clang Toolchain restored from Action Cache!"
+          fi
+
+          BINDGEN_PATH="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
+          BINDGEN_VER=$("$BINDGEN_PATH" --version 2>/dev/null | awk '{print $2}' || true)
+          if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
+            echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
+            curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
+            toolchains/rust/bin/cargo-binstall --no-confirm --install-dir toolchains/clang-tools bindgen-cli || \
+              toolchains/rust/bin/cargo install --root toolchains/clang-tools bindgen-cli
+            if [ -f toolchains/clang-tools/bin/bindgen ]; then
+              mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
+            fi
+            chmod +x toolchains/clang-tools/bindgen
+            echo "Installed bindgen version: $("$BINDGEN_PATH" --version 2>&1)"
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
@@ -465,7 +479,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-rust1.82.0
+          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
 
   build_lsm:
     name: LSM Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
@@ -561,7 +575,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-rust1.82.0
+          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -581,6 +595,20 @@ jobs:
             wait
           else
             echo "✅ Clang Toolchain restored from Action Cache!"
+          fi
+
+          BINDGEN_PATH="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
+          BINDGEN_VER=$("$BINDGEN_PATH" --version 2>/dev/null | awk '{print $2}' || true)
+          if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
+            echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
+            curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
+            toolchains/rust/bin/cargo-binstall --no-confirm --install-dir toolchains/clang-tools bindgen-cli || \
+              toolchains/rust/bin/cargo install --root toolchains/clang-tools bindgen-cli
+            if [ -f toolchains/clang-tools/bin/bindgen ]; then
+              mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
+            fi
+            chmod +x toolchains/clang-tools/bindgen
+            echo "Installed bindgen version: $("$BINDGEN_PATH" --version 2>&1)"
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
@@ -857,7 +885,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-rust1.82.0
+          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
 
   release:
     name: Publish Release
