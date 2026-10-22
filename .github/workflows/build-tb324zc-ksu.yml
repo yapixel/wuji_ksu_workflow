@@ -131,7 +131,6 @@ jobs:
             -o compiler_check=content \
             -o "sloppiness=file_macro,time_macros,include_file_mtime,include_file_ctime,pch_defines,modules,system_headers" \
             -o depend_mode=true \
-            -o run_second_cpp=true \
             -o compression=true \
             -o compression_level=1 \
             -o keep_comments_cpp=true \
@@ -496,7 +495,6 @@ jobs:
             -o compiler_check=content \
             -o "sloppiness=file_macro,time_macros,include_file_mtime,include_file_ctime,pch_defines,modules,system_headers" \
             -o depend_mode=true \
-            -o run_second_cpp=true \
             -o compression=true \
             -o compression_level=1 \
             -o keep_comments_cpp=true \
