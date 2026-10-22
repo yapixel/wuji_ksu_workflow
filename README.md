@@ -11,7 +11,7 @@ Automated GitHub Actions CI/CD pipeline for building and packaging **Lenovo ZUK 
 | **Target Device** | Lenovo ZUK TB324ZC |
 | **Android Version** | Android 16 |
 | **Kernel Base** | Android Generic Kernel Image (`GKI 6.12.38`) |
-| **Toolchain** | AOSP LLVM Clang 19 (`r536225`) + Rust 1.82.0 + LLD |
+| **Toolchain** | ZyCromerZ Clang 23.0.0git (`20260130`) + Rust 1.82.0 + LLD |
 
 ---
 
