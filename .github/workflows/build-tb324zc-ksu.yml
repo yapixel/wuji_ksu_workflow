@@ -61,7 +61,7 @@ env:
 jobs:
   matrix_prep:
     name: Prepare Environment
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       susfs_matrix: ${{ steps.set-matrix.outputs.susfs_matrix }}
     steps:
@@ -78,7 +78,7 @@ jobs:
     name: Manual Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
     if: github.event.inputs.hook_mode == 'all' || github.event.inputs.hook_mode == 'manual' || github.event_name != 'workflow_dispatch'
     needs: matrix_prep
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -98,17 +98,12 @@ jobs:
       - name: Uninstall Host System Clang/LLVM
         run: |
           echo "Purging host Clang/LLVM packages..."
-          sudo apt-get purge -y 'clang*' 'llvm*' 'lld*' 'libclang*' 2>/dev/null || true
+          sudo apt-get purge -y --auto-remove 'clang*' 'llvm*' 'lld*' 'libclang*' 2>/dev/null || true
           sudo rm -rf /usr/lib/llvm* /usr/lib/clang* /usr/include/clang* /usr/include/llvm* 2>/dev/null || true
 
       - name: Set up build environment and tools
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4 libxml2 libxml2-utils
-          if [ ! -f /usr/lib/x86_64-linux-gnu/libxml2.so.2 ]; then
-            SO_FILE=$(find /usr/lib/x86_64-linux-gnu/ -name "libxml2.so.*" 2>/dev/null | head -n1)
-            [ -n "$SO_FILE" ] && sudo ln -sf "$SO_FILE" /usr/lib/x86_64-linux-gnu/libxml2.so.2 && sudo ldconfig || true
-          fi
+          sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4)
 
       - name: Restore Ccache Data
         id: ccache-restore
@@ -168,7 +163,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -176,7 +171,7 @@ jobs:
           
           if [ "${{ steps.toolchain-cache.outputs.cache-hit }}" != "true" ] || [ ! -d "toolchains/clang/bin" ]; then
             echo "⚡ Cache miss: Concurrently Downloading Clang & Build Toolchains with aria2c..."
-            aria2c -s 16 -x 16 -k 1M "https://github.com/ZyCromerZ/Clang/releases/download/23.0.0git-20260130-release/Clang-23.0.0git-20260130.tar.gz" -o clang.tar.gz &
+            aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz" -o clang.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/rust-1.82.0.tar.gz" -o rust.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-tools-r536225.tar.gz" -o clang-tools.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/build-tools.tar.gz" -o build-tools.tar.gz &
@@ -188,20 +183,6 @@ jobs:
             wait
           else
             echo "✅ Clang Toolchain restored from Action Cache!"
-          fi
-
-          BINDGEN_PATH="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
-          BINDGEN_VER=$("$BINDGEN_PATH" --version 2>/dev/null | awk '{print $2}' || true)
-          if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
-            echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
-            curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
-            toolchains/rust/bin/cargo-binstall --no-confirm --install-path toolchains/clang-tools bindgen-cli || \
-              toolchains/rust/bin/cargo install --locked --root toolchains/clang-tools bindgen-cli@0.72.1
-            if [ -f toolchains/clang-tools/bin/bindgen ]; then
-              mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
-            fi
-            chmod +x toolchains/clang-tools/bindgen
-            echo "Installed bindgen version: $("$BINDGEN_PATH" --version 2>&1)"
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
@@ -222,7 +203,6 @@ jobs:
           [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
           [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] || ln -sf "$CLANG_LIB" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
           ln -sf "$CLANG_LIB/libclang.so" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/libclang.so" 2>/dev/null || true
-          ln -sf /usr/lib/x86_64-linux-gnu/libxml2.so* "$CLANG_LIB/" 2>/dev/null || true
           echo "LIBCLANG_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
           echo "BINDGEN=$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen" >> "$GITHUB_ENV"
@@ -479,13 +459,13 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
   build_lsm:
     name: LSM Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
     if: github.event.inputs.hook_mode == 'all' || github.event.inputs.hook_mode == 'lsm' || github.event_name != 'workflow_dispatch'
     needs: matrix_prep
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -505,17 +485,12 @@ jobs:
       - name: Uninstall Host System Clang/LLVM
         run: |
           echo "Purging host Clang/LLVM packages..."
-          sudo apt-get purge -y 'clang*' 'llvm*' 'lld*' 'libclang*' 2>/dev/null || true
+          sudo apt-get purge -y --auto-remove 'clang*' 'llvm*' 'lld*' 'libclang*' 2>/dev/null || true
           sudo rm -rf /usr/lib/llvm* /usr/lib/clang* /usr/include/clang* /usr/include/llvm* 2>/dev/null || true
 
       - name: Set up build environment and tools
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4 libxml2 libxml2-utils
-          if [ ! -f /usr/lib/x86_64-linux-gnu/libxml2.so.2 ]; then
-            SO_FILE=$(find /usr/lib/x86_64-linux-gnu/ -name "libxml2.so.*" 2>/dev/null | head -n1)
-            [ -n "$SO_FILE" ] && sudo ln -sf "$SO_FILE" /usr/lib/x86_64-linux-gnu/libxml2.so.2 && sudo ldconfig || true
-          fi
+          sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4 2>/dev/null || (sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends ccache aria2 libdw-dev m4)
 
       - name: Restore Ccache Data
         id: ccache-restore
@@ -575,7 +550,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -583,7 +558,7 @@ jobs:
           
           if [ "${{ steps.toolchain-cache.outputs.cache-hit }}" != "true" ] || [ ! -d "toolchains/clang/bin" ]; then
             echo "⚡ Cache miss: Concurrently Downloading Clang & Build Toolchains with aria2c..."
-            aria2c -s 16 -x 16 -k 1M "https://github.com/ZyCromerZ/Clang/releases/download/23.0.0git-20260130-release/Clang-23.0.0git-20260130.tar.gz" -o clang.tar.gz &
+            aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz" -o clang.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/rust-1.82.0.tar.gz" -o rust.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-tools-r536225.tar.gz" -o clang-tools.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/build-tools.tar.gz" -o build-tools.tar.gz &
@@ -595,20 +570,6 @@ jobs:
             wait
           else
             echo "✅ Clang Toolchain restored from Action Cache!"
-          fi
-
-          BINDGEN_PATH="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
-          BINDGEN_VER=$("$BINDGEN_PATH" --version 2>/dev/null | awk '{print $2}' || true)
-          if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
-            echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
-            curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
-            toolchains/rust/bin/cargo-binstall --no-confirm --install-path toolchains/clang-tools bindgen-cli || \
-              toolchains/rust/bin/cargo install --locked --root toolchains/clang-tools bindgen-cli@0.72.1
-            if [ -f toolchains/clang-tools/bin/bindgen ]; then
-              mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
-            fi
-            chmod +x toolchains/clang-tools/bindgen
-            echo "Installed bindgen version: $("$BINDGEN_PATH" --version 2>&1)"
           fi
 
           echo "Downloading GKI 6.12.38 kernel source..."
@@ -629,7 +590,6 @@ jobs:
           [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
           [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] || ln -sf "$CLANG_LIB" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
           ln -sf "$CLANG_LIB/libclang.so" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/libclang.so" 2>/dev/null || true
-          ln -sf /usr/lib/x86_64-linux-gnu/libxml2.so* "$CLANG_LIB/" 2>/dev/null || true
           echo "LIBCLANG_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
           echo "LD_LIBRARY_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
           echo "BINDGEN=$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen" >> "$GITHUB_ENV"
@@ -885,13 +845,13 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-zyc-23.0.0-20260130-bindgen0.73-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
   release:
     name: Publish Release
     if: always() && github.event.inputs.create_release != 'false' && (needs.build_manual.result == 'success' || needs.build_lsm.result == 'success')
     needs: [matrix_prep, build_manual, build_lsm]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
