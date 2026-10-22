@@ -193,6 +193,14 @@ jobs:
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/rust/bin" >> "$GITHUB_PATH"
 
+          CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] || ln -sf "$CLANG_LIB" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          ln -sf "$CLANG_LIB/libclang.so" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/libclang.so" 2>/dev/null || true
+          echo "LIBCLANG_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
+          echo "BINDGEN=$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen" >> "$GITHUB_ENV"
+
       - name: Clone Scripts & AnyKernel3
         run: |
           set -euo pipefail
@@ -339,12 +347,18 @@ jobs:
           chmod 777 ./*.sh 2>/dev/null || true
           source "./_setup_env.sh" 2>/dev/null || true
 
+          CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          export LIBCLANG_PATH="$CLANG_LIB"
+          export LD_LIBRARY_PATH="$CLANG_LIB:${LD_LIBRARY_PATH:-}"
+          export BINDGEN="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
+
           if [ "${{ github.event.inputs.use_ccache }}" != "false" ]; then
             export PATH="${{ github.workspace }}/.ccache-bin:$PATH"
           fi
 
-          make -j"$(nproc --all)" O=out gki_defconfig
-          make -j"$(nproc --all)" O=out Image
+          make -j"$(nproc --all)" O=out LIBCLANG_PATH="$LIBCLANG_PATH" BINDGEN="$BINDGEN" gki_defconfig
+          make -j"$(nproc --all)" O=out LIBCLANG_PATH="$LIBCLANG_PATH" BINDGEN="$BINDGEN" Image
 
       - name: Ccache Performance Stats
         if: github.event.inputs.use_ccache != 'false'
@@ -560,6 +574,14 @@ jobs:
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools" >> "$GITHUB_PATH"
           echo "$GITHUB_WORKSPACE/kernel_workspace/toolchains/rust/bin" >> "$GITHUB_PATH"
 
+          CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] || ln -sf "$CLANG_LIB" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          ln -sf "$CLANG_LIB/libclang.so" "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/libclang.so" 2>/dev/null || true
+          echo "LIBCLANG_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$CLANG_LIB" >> "$GITHUB_ENV"
+          echo "BINDGEN=$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen" >> "$GITHUB_ENV"
+
       - name: Clone Scripts & AnyKernel3
         run: |
           set -euo pipefail
@@ -705,12 +727,18 @@ jobs:
           chmod 777 ./*.sh 2>/dev/null || true
           source "./_setup_env.sh" 2>/dev/null || true
 
+          CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib"
+          [ -d "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64" ] && [ -f "$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64/libclang.so" ] && CLANG_LIB="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang/lib64"
+          export LIBCLANG_PATH="$CLANG_LIB"
+          export LD_LIBRARY_PATH="$CLANG_LIB:${LD_LIBRARY_PATH:-}"
+          export BINDGEN="$GITHUB_WORKSPACE/kernel_workspace/toolchains/clang-tools/bindgen"
+
           if [ "${{ github.event.inputs.use_ccache }}" != "false" ]; then
             export PATH="${{ github.workspace }}/.ccache-bin:$PATH"
           fi
 
-          make -j"$(nproc --all)" O=out gki_defconfig
-          make -j"$(nproc --all)" O=out Image
+          make -j"$(nproc --all)" O=out LIBCLANG_PATH="$LIBCLANG_PATH" BINDGEN="$BINDGEN" gki_defconfig
+          make -j"$(nproc --all)" O=out LIBCLANG_PATH="$LIBCLANG_PATH" BINDGEN="$BINDGEN" Image
 
       - name: Ccache Performance Stats
         if: github.event.inputs.use_ccache != 'false'
