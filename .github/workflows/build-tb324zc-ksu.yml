@@ -33,14 +33,6 @@ on:
         required: true
         type: boolean
         default: true
-      clang_version:
-        description: 'Clang Version'
-        required: true
-        type: choice
-        options:
-          - 'r536225'
-          - 'r614150'
-        default: 'r536225'
       create_release:
         description: 'Create GitHub Release'
         required: true
@@ -119,10 +111,9 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
+          key: ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
           restore-keys: |
-            ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-${{ github.event.inputs.ksu_branch || 'master' }}-
-            ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-
+            ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
             ccache-gki-6.12.38-manual-${{ matrix.enable_susfs }}-
             ccache-gki-6.12.38-manual-
             ccache-gki-6.12.38-
@@ -172,7 +163,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-${{ github.event.inputs.clang_version || 'r614150' }}-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -180,14 +171,7 @@ jobs:
           
           if [ "${{ steps.toolchain-cache.outputs.cache-hit }}" != "true" ] || [ ! -d "toolchains/clang/bin" ]; then
             echo "⚡ Cache miss: Concurrently Downloading Clang & Build Toolchains with aria2c..."
-            CLANG_VER="${{ github.event.inputs.clang_version || 'r614150' }}"
-            if [ "$CLANG_VER" = "r614150" ]; then
-              CLANG_URL="https://github.com/midori01/galaxy_kernel_sm8350/releases/download/toolchain/clang-r614150.tar.gz"
-            else
-              CLANG_URL="https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz"
-            fi
-            echo "Selected Clang: $CLANG_VER ($CLANG_URL)"
-            aria2c -s 16 -x 16 -k 1M "$CLANG_URL" -o clang.tar.gz &
+            aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz" -o clang.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/rust-1.82.0.tar.gz" -o rust.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-tools-r536225.tar.gz" -o clang-tools.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/build-tools.tar.gz" -o build-tools.tar.gz &
@@ -475,7 +459,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-${{ github.event.inputs.clang_version || 'r614150' }}-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
   build_lsm:
     name: LSM Hook 6.12.38 (SUSFS=${{ matrix.enable_susfs }})
@@ -514,10 +498,9 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
+          key: ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-${{ github.run_id }}
           restore-keys: |
-            ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-${{ github.event.inputs.ksu_branch || 'master' }}-
-            ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.clang_version || 'r614150' }}-
+            ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-${{ github.event.inputs.ksu_branch || 'master' }}-
             ccache-gki-6.12.38-lsm-${{ matrix.enable_susfs }}-
             ccache-gki-6.12.38-lsm-
             ccache-gki-6.12.38-
@@ -567,7 +550,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-${{ github.event.inputs.clang_version || 'r614150' }}-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
       - name: Install Toolchains & Source
         run: |
@@ -575,14 +558,7 @@ jobs:
           
           if [ "${{ steps.toolchain-cache.outputs.cache-hit }}" != "true" ] || [ ! -d "toolchains/clang/bin" ]; then
             echo "⚡ Cache miss: Concurrently Downloading Clang & Build Toolchains with aria2c..."
-            CLANG_VER="${{ github.event.inputs.clang_version || 'r614150' }}"
-            if [ "$CLANG_VER" = "r614150" ]; then
-              CLANG_URL="https://github.com/midori01/galaxy_kernel_sm8350/releases/download/toolchain/clang-r614150.tar.gz"
-            else
-              CLANG_URL="https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz"
-            fi
-            echo "Selected Clang: $CLANG_VER ($CLANG_URL)"
-            aria2c -s 16 -x 16 -k 1M "$CLANG_URL" -o clang.tar.gz &
+            aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-r536225.tar.gz" -o clang.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/rust-1.82.0.tar.gz" -o rust.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/clang-tools-r536225.tar.gz" -o clang-tools.tar.gz &
             aria2c -s 16 -x 16 -k 1M "https://github.com/yapixel/gki-build-assets/releases/download/r536225/build-tools.tar.gz" -o build-tools.tar.gz &
@@ -869,7 +845,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ github.workspace }}/kernel_workspace/toolchains
-          key: gki-toolchains-${{ github.event.inputs.clang_version || 'r614150' }}-rust1.82.0
+          key: gki-toolchains-r536225-rust1.82.0
 
   release:
     name: Publish Release
