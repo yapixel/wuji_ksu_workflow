@@ -195,8 +195,8 @@ jobs:
           if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
             echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
             curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
-            toolchains/rust/bin/cargo-binstall --no-confirm --install-dir toolchains/clang-tools bindgen-cli || \
-              toolchains/rust/bin/cargo install --root toolchains/clang-tools bindgen-cli
+            toolchains/rust/bin/cargo-binstall --no-confirm --install-path toolchains/clang-tools bindgen-cli || \
+              toolchains/rust/bin/cargo install --locked --root toolchains/clang-tools bindgen-cli@0.72.1
             if [ -f toolchains/clang-tools/bin/bindgen ]; then
               mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
             fi
@@ -602,8 +602,8 @@ jobs:
           if [ -z "$BINDGEN_VER" ] || [ "$(printf '%s\n%s\n' "0.72.1" "$BINDGEN_VER" | sort -V | head -n1)" != "0.72.1" ]; then
             echo "⚡ Upgrading bindgen to >= 0.72.1 for Clang 23 compatibility (detected: ${BINDGEN_VER:-none})..."
             curl -fsSL "https://github.com/cargo-bins/cargo-binstall/releases/download/v1.26.0/cargo-binstall-x86_64-unknown-linux-musl.tgz" | tar -xz -C toolchains/rust/bin/
-            toolchains/rust/bin/cargo-binstall --no-confirm --install-dir toolchains/clang-tools bindgen-cli || \
-              toolchains/rust/bin/cargo install --root toolchains/clang-tools bindgen-cli
+            toolchains/rust/bin/cargo-binstall --no-confirm --install-path toolchains/clang-tools bindgen-cli || \
+              toolchains/rust/bin/cargo install --locked --root toolchains/clang-tools bindgen-cli@0.72.1
             if [ -f toolchains/clang-tools/bin/bindgen ]; then
               mv -f toolchains/clang-tools/bin/bindgen toolchains/clang-tools/bindgen
             fi
