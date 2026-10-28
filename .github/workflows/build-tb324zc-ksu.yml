@@ -247,7 +247,19 @@ jobs:
         id: meta
         run: |
           KSU_BRANCH="${{ github.event.inputs.ksu_branch || 'master' }}"
-          K_VER=$(./sh/get_ksuver.sh "backslashxx" "KernelSU" "$KSU_BRANCH" || echo "unknown")
+          K_VER=""
+          if [ -d "kernel_workspace/common/KernelSU" ]; then
+            K_VER=$(grep -E 'KSU_VERSION[ =:]*[0-9]+' kernel_workspace/common/KernelSU/kernel/Makefile kernel_workspace/common/KernelSU/kernel/Kbuild 2>/dev/null | head -n1 | grep -oE '[0-9]+' || true)
+          fi
+          if [ -z "$K_VER" ] && [ -f "./sh/get_ksuver.sh" ]; then
+            RAW_K_VER=$(./sh/get_ksuver.sh "backslashxx" "KernelSU" "$KSU_BRANCH" 2>/dev/null || true)
+            if [[ "$RAW_K_VER" =~ ^[0-9]+$ ]]; then
+              K_VER="$RAW_K_VER"
+            fi
+          fi
+          if [ -z "$K_VER" ]; then
+            K_VER="unknown"
+          fi
 
           RAW_TOOLCHAIN_STR=$(clang --version 2>&1 | head -n1)
           TOOLCHAIN_DISPLAY="$RAW_TOOLCHAIN_STR"
@@ -634,7 +646,19 @@ jobs:
         id: meta
         run: |
           KSU_BRANCH="${{ github.event.inputs.ksu_branch || 'master' }}"
-          K_VER=$(./sh/get_ksuver.sh "backslashxx" "KernelSU" "$KSU_BRANCH" || echo "unknown")
+          K_VER=""
+          if [ -d "kernel_workspace/common/KernelSU" ]; then
+            K_VER=$(grep -E 'KSU_VERSION[ =:]*[0-9]+' kernel_workspace/common/KernelSU/kernel/Makefile kernel_workspace/common/KernelSU/kernel/Kbuild 2>/dev/null | head -n1 | grep -oE '[0-9]+' || true)
+          fi
+          if [ -z "$K_VER" ] && [ -f "./sh/get_ksuver.sh" ]; then
+            RAW_K_VER=$(./sh/get_ksuver.sh "backslashxx" "KernelSU" "$KSU_BRANCH" 2>/dev/null || true)
+            if [[ "$RAW_K_VER" =~ ^[0-9]+$ ]]; then
+              K_VER="$RAW_K_VER"
+            fi
+          fi
+          if [ -z "$K_VER" ]; then
+            K_VER="unknown"
+          fi
 
           RAW_TOOLCHAIN_STR=$(clang --version 2>&1 | head -n1)
           TOOLCHAIN_DISPLAY="$RAW_TOOLCHAIN_STR"
