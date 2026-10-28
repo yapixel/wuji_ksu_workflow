@@ -94,6 +94,7 @@ jobs:
           name: 50_add_susfs_in_gki-android16-6.12.patch
           path: ${{ runner.temp }}/upstream-50.patch
           if-no-files-found: error
+          retention-days: 1
 
       # ======================================================================
       # GENERATE 51 FROM 50
@@ -463,6 +464,7 @@ jobs:
           name: 51_add_susfs_in_gki-android16-6.12.38-deinlined.patch
           path: ${{ github.workspace }}/${{ env.PATCH_51 }}
           if-no-files-found: error
+          retention-days: 1
 
       - name: Upload clean 11 patch artifact
         uses: actions/upload-artifact@v7.0.1
@@ -470,6 +472,7 @@ jobs:
           name: 11_enable_susfs_for_ksu.patch
           path: ${{ github.workspace }}/${{ env.PATCH_11 }}
           if-no-files-found: error
+          retention-days: 1
 
       - name: Commit validated patch refresh
         run: |

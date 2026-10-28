@@ -469,6 +469,7 @@ jobs:
         with:
           name: kernel-6.12.38-manual-${{ matrix.enable_susfs }}
           path: ./output_artifacts/*
+          retention-days: 1
 
       - name: Save Ccache Data
         if: always() && github.event.inputs.use_ccache != 'false'
@@ -843,6 +844,7 @@ jobs:
         with:
           name: kernel-6.12.38-lsm-${{ matrix.enable_susfs }}
           path: ./output_artifacts/*
+          retention-days: 1
 
       - name: Save Ccache Data
         if: always() && github.event.inputs.use_ccache != 'false'
