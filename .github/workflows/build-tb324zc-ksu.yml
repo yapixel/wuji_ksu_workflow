@@ -38,6 +38,11 @@ on:
         required: true
         type: boolean
         default: true
+      upload_debug_symbols:
+        description: 'Upload Debug Symbols (vmlinux & System.map)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -436,8 +441,9 @@ jobs:
             echo "SUSFS_VER='${SUSFS_VER}'" >> ./output_artifacts/build_metadata.env
           fi
 
-          if [ "$KSU_BRANCH" = "staging" ]; then
-            echo "Packaging debug symbols for staging build..."
+          # Package debug symbols if requested
+          if [ "$KSU_BRANCH" = "staging" ] || [ "${{ github.event.inputs.upload_debug_symbols }}" = "true" ]; then
+            echo "📦 Packaging debug symbols..."
             VMLINUX_ZIP_NAME="vmlinux-${BASE_NAME}.zip"
             SYSMAP_ZIP_NAME="System.map-${BASE_NAME}.zip"
 
@@ -446,21 +452,29 @@ jobs:
             elif [ -f "kernel_workspace/common/out/arch/arm64/boot/vmlinux" ]; then
               cp kernel_workspace/common/out/arch/arm64/boot/vmlinux ./vmlinux
             else
-              find kernel_workspace/common/out -name "vmlinux" -type f -exec cp {} ./vmlinux \; || true
+              find kernel_workspace/common/out -name "vmlinux" -type f -exec cp {} ./vmlinux \; 2>/dev/null || true
             fi
             if [ -f "./vmlinux" ]; then
-              zip -9 "$VMLINUX_ZIP_NAME" vmlinux
-              mv "$VMLINUX_ZIP_NAME" ./output_artifacts/
+              zip -9 "$VMLINUX_ZIP_NAME" vmlinux || { echo "⚠️  Failed to create vmlinux zip"; }
+              mv "$VMLINUX_ZIP_NAME" ./output_artifacts/ || true
+              echo "✅ Debug symbols (vmlinux) packaged"
+            else
+              echo "⚠️  vmlinux not found"
             fi
 
             if [ -f "kernel_workspace/common/out/System.map" ]; then
               cp kernel_workspace/common/out/System.map ./System.map
+            elif [ -f "kernel_workspace/common/out/arch/arm64/boot/System.map" ]; then
+              cp kernel_workspace/common/out/arch/arm64/boot/System.map ./System.map
             else
-              find kernel_workspace/common/out -name "System.map" -type f -exec cp {} ./System.map \; || true
+              find kernel_workspace/common/out -name "System.map" -type f -exec cp {} ./System.map \; 2>/dev/null || true
             fi
             if [ -f "./System.map" ]; then
-              zip -9 "$SYSMAP_ZIP_NAME" System.map
-              mv "$SYSMAP_ZIP_NAME" ./output_artifacts/
+              zip -9 "$SYSMAP_ZIP_NAME" System.map || { echo "⚠️  Failed to create System.map zip"; }
+              mv "$SYSMAP_ZIP_NAME" ./output_artifacts/ || true
+              echo "✅ Debug symbols (System.map) packaged"
+            else
+              echo "⚠️  System.map not found"
             fi
           fi
 
@@ -811,8 +825,9 @@ jobs:
             echo "SUSFS_VER='${SUSFS_VER}'" >> ./output_artifacts/build_metadata.env
           fi
 
-          if [ "$KSU_BRANCH" = "staging" ]; then
-            echo "Packaging debug symbols for staging build..."
+          # Package debug symbols if requested
+          if [ "$KSU_BRANCH" = "staging" ] || [ "${{ github.event.inputs.upload_debug_symbols }}" = "true" ]; then
+            echo "📦 Packaging debug symbols..."
             VMLINUX_ZIP_NAME="vmlinux-${BASE_NAME}.zip"
             SYSMAP_ZIP_NAME="System.map-${BASE_NAME}.zip"
 
@@ -821,21 +836,29 @@ jobs:
             elif [ -f "kernel_workspace/common/out/arch/arm64/boot/vmlinux" ]; then
               cp kernel_workspace/common/out/arch/arm64/boot/vmlinux ./vmlinux
             else
-              find kernel_workspace/common/out -name "vmlinux" -type f -exec cp {} ./vmlinux \; || true
+              find kernel_workspace/common/out -name "vmlinux" -type f -exec cp {} ./vmlinux \; 2>/dev/null || true
             fi
             if [ -f "./vmlinux" ]; then
-              zip -9 "$VMLINUX_ZIP_NAME" vmlinux
-              mv "$VMLINUX_ZIP_NAME" ./output_artifacts/
+              zip -9 "$VMLINUX_ZIP_NAME" vmlinux || { echo "⚠️  Failed to create vmlinux zip"; }
+              mv "$VMLINUX_ZIP_NAME" ./output_artifacts/ || true
+              echo "✅ Debug symbols (vmlinux) packaged"
+            else
+              echo "⚠️  vmlinux not found"
             fi
 
             if [ -f "kernel_workspace/common/out/System.map" ]; then
               cp kernel_workspace/common/out/System.map ./System.map
+            elif [ -f "kernel_workspace/common/out/arch/arm64/boot/System.map" ]; then
+              cp kernel_workspace/common/out/arch/arm64/boot/System.map ./System.map
             else
-              find kernel_workspace/common/out -name "System.map" -type f -exec cp {} ./System.map \; || true
+              find kernel_workspace/common/out -name "System.map" -type f -exec cp {} ./System.map \; 2>/dev/null || true
             fi
             if [ -f "./System.map" ]; then
-              zip -9 "$SYSMAP_ZIP_NAME" System.map
-              mv "$SYSMAP_ZIP_NAME" ./output_artifacts/
+              zip -9 "$SYSMAP_ZIP_NAME" System.map || { echo "⚠️  Failed to create System.map zip"; }
+              mv "$SYSMAP_ZIP_NAME" ./output_artifacts/ || true
+              echo "✅ Debug symbols (System.map) packaged"
+            else
+              echo "⚠️  System.map not found"
             fi
           fi
 
@@ -918,9 +941,12 @@ jobs:
           if [ "$KSU_BRANCH" = "staging" ]; then
             PRERELEASE_FLAG="--prerelease"
             RELEASE_TITLE="Lenovo ZUK TB324ZC 6.12.38 (Staging) — $TAG"
-            DEBUG_NOTE="> 🛠️ **Debug Symbols**: Includes \`vmlinux\` and \`System.map\` debug symbol archives for kernel debugging."
           else
             RELEASE_TITLE="Lenovo ZUK TB324ZC 6.12.38 — $TAG"
+          fi
+          if [ "$KSU_BRANCH" = "staging" ] || [ "${{ github.event.inputs.upload_debug_symbols }}" = "true" ]; then
+            DEBUG_NOTE="> 🛠️ **Debug Symbols**: Includes \`vmlinux\` and \`System.map\` debug symbol archives for kernel debugging."
+          else
             DEBUG_NOTE=""
           fi
           BUILD_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
