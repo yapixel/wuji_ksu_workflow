@@ -313,14 +313,22 @@ jobs:
         working-directory: kernel_workspace/common
         run: |
           patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/unicode_bypass_fix.patch" || true
-          if [ "${{ github.event.inputs.enable_bbrv3 != 'false' }}" = "true" ]; then
-            if [ -f "${{ github.workspace }}/.github/patches/gki/bbrv3.patch" ]; then
-              echo "🚀 Applying BBRv3 patch for android16-6.12..."
-              patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/bbrv3.patch"
-            fi
-          fi
           patch -p1 -l --fuzz=3 < "${{ github.workspace }}/.github/patches/xxksu/manual-security-hooks-v2.0.patch"
           patch -p1 -l < "${{ github.workspace }}/.github/patches/xxksu/scope-min-manual-hooks-v2.3.patch"
+
+      - name: Apply BBRv3 Patch
+        if: ${{ github.event.inputs.enable_bbrv3 != 'false' }}
+        working-directory: kernel_workspace/common
+        run: |
+          set -e
+          BBR3_PATCH="${{ github.workspace }}/.github/patches/gki/bbrv3.patch"
+          if [ -f "$BBR3_PATCH" ]; then
+            echo "🚀 Applying BBRv3 patch for android16-6.12..."
+            patch -p1 -l < "$BBR3_PATCH"
+            echo "✅ BBRv3 patch applied successfully"
+          else
+            echo "⚠️ BBRv3 patch not found at $BBR3_PATCH, skipping"
+          fi
 
       - name: Apply SuSFS GKI Patch (51 - de-inlined)
         if: matrix.enable_susfs == 'true'
@@ -705,11 +713,19 @@ jobs:
         working-directory: kernel_workspace/common
         run: |
           patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/unicode_bypass_fix.patch" || true
-          if [ "${{ github.event.inputs.enable_bbrv3 != 'false' }}" = "true" ]; then
-            if [ -f "${{ github.workspace }}/.github/patches/gki/bbrv3.patch" ]; then
-              echo "🚀 Applying BBRv3 patch for android16-6.12..."
-              patch -p1 -l < "${{ github.workspace }}/.github/patches/gki/bbrv3.patch"
-            fi
+
+      - name: Apply BBRv3 Patch
+        if: ${{ github.event.inputs.enable_bbrv3 != 'false' }}
+        working-directory: kernel_workspace/common
+        run: |
+          set -e
+          BBR3_PATCH="${{ github.workspace }}/.github/patches/gki/bbrv3.patch"
+          if [ -f "$BBR3_PATCH" ]; then
+            echo "🚀 Applying BBRv3 patch for android16-6.12..."
+            patch -p1 -l < "$BBR3_PATCH"
+            echo "✅ BBRv3 patch applied successfully"
+          else
+            echo "⚠️ BBRv3 patch not found at $BBR3_PATCH, skipping"
           fi
 
       - name: Apply SuSFS GKI Patch (51 - de-inlined)
