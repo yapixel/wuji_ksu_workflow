@@ -360,6 +360,12 @@ jobs:
           #patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
           patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/11_enable_susfs_for_ksu.patch")
 
+      - name: Apply KernelSU SELinux Hide Anti-Detection Patch (12)
+        working-directory: kernel_workspace/common/KernelSU
+        run: |
+          echo "=== [12] Apply SELinux Hide Anti-Detection patch to KernelSU ==="
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/12_selinux_hide_antidetect.patch")
+
       - name: Inject Defconfig Flags
         uses: ./.github/actions/kernel-config
         with:
@@ -757,6 +763,12 @@ jobs:
           echo "=== [11] Apply SuSFS integration patch to KernelSU ==="
           #patch -p1 -l --fuzz=3 < <(curl -fsSL "https://github.com/midori01/KernelSU/commit/xx.patch")
           patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/11_enable_susfs_for_ksu.patch")
+
+      - name: Apply KernelSU SELinux Hide Anti-Detection Patch (12)
+        working-directory: kernel_workspace/common/KernelSU
+        run: |
+          echo "=== [12] Apply SELinux Hide Anti-Detection patch to KernelSU ==="
+          patch -p1 -l --fuzz=3 < <(curl -fsSL "https://raw.githubusercontent.com/yapixel/xxksu_susfs_patch/refs/heads/main/patches/xxksu/12_selinux_hide_antidetect.patch")
 
 
       - name: Inject Defconfig Flags
