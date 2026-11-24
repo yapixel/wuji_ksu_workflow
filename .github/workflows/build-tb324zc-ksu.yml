@@ -62,7 +62,7 @@ env:
   SUSFS_REPO_URL: https://gitlab.com/simonpunk/susfs4ksu
   SUSFS_REPO_BRANCH: gki-android16-6.12
   SCRIPTS_REPO: https://github.com/TheSillyOk/sh
-  KSU_REPO: backslashxx/KernelSU
+  KSU_REPO: yapixel/KernelSU
   CCACHE_DIR: "${{ github.workspace }}/.ccache"
   CCACHE_COMPILERCHECK: "content"
   CCACHE_NOHASHDIR: "true"
@@ -101,7 +101,7 @@ jobs:
 
           # Clone scripts repo once to run get_ksuver.sh
           git clone --depth=1 --single-branch --no-tags "${{ env.SCRIPTS_REPO }}" sh
-          RAW_K_VER=$(LC_ALL=C ./sh/get_ksuver.sh "backslashxx" "KernelSU" "$KSU_BRANCH" 2>/dev/null || true)
+          RAW_K_VER=$(LC_ALL=C ./sh/get_ksuver.sh "yapixel" "KernelSU" "$KSU_BRANCH" 2>/dev/null || true)
           if [[ "$RAW_K_VER" =~ ^[0-9]+$ ]]; then
             K_VER="$RAW_K_VER"
           else

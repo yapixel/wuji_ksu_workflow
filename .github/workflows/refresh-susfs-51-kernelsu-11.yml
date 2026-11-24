@@ -15,7 +15,7 @@ concurrency:
 env:
   SUSFS_REPO_URL: https://gitlab.com/simonpunk/susfs4ksu
   SUSFS_REPO_BRANCH: gki-android16-6.12
-  KSU_REPO_URL: https://github.com/backslashxx/KernelSU
+  KSU_REPO_URL: https://github.com/yapixel/KernelSU
   KSU_BRANCH: master
   XX_PATCH_URL: https://github.com/midori01/KernelSU/commit/xx.patch
   COMMON_URL: https://github.com/yapixel/gki-build-assets/releases/download/android16-6.12.38_r00/common-android16-6.12.38_r00.tar.gz
